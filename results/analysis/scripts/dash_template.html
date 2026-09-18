@@ -1,0 +1,554 @@
+<title>Monocular 4DGS Benchmark</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4;
+  --ink:#10151b; --ink-2:#4a5460; --muted:#78828e;
+  --rule:#dde3e9; --rule-strong:#c6ced7;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --accent:#2a78d6; --warn:#b8621f; --warn-bg:#fdf3ea;
+  --shadow:0 1px 2px rgba(16,21,27,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0e1116; --surface:#161a20; --surface-2:#1d222a;
+    --ink:#eef2f6; --ink-2:#b3bcc7; --muted:#8b95a1;
+    --rule:#262c35; --rule-strong:#343c47;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --accent:#3987e5; --warn:#e0a25f; --warn-bg:#221a11;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0e1116; --surface:#161a20; --surface-2:#1d222a;
+  --ink:#eef2f6; --ink-2:#b3bcc7; --muted:#8b95a1;
+  --rule:#262c35; --rule-strong:#343c47;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --accent:#3987e5; --warn:#e0a25f; --warn-bg:#221a11;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:40px 24px 72px; display:flex; flex-direction:column; gap:34px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+h1{font-size:31px; line-height:1.15; font-weight:600; margin:0 0 10px; letter-spacing:-.015em; text-wrap:balance}
+h2{font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em}
+p{margin:0}
+.lede{color:var(--ink-2); max-width:66ch}
+header .meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px}
+.chip{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-2);
+  border:1px solid var(--rule); background:var(--surface); padding:4px 9px; border-radius:3px}
+.chip b{color:var(--ink); font-weight:600}
+.note{border-left:3px solid var(--warn); background:var(--warn-bg); padding:14px 16px;
+  display:flex; flex-direction:column; gap:7px; border-radius:0 4px 4px 0}
+.note h3{margin:0; font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  font-family:"IBM Plex Mono",monospace; color:var(--warn)}
+.note ol{margin:0; padding-left:18px; color:var(--ink-2); font-size:13.5px; display:flex;
+  flex-direction:column; gap:5px}
+section{display:flex; flex-direction:column; gap:14px}
+.shead{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  border-bottom:1px solid var(--rule); padding-bottom:9px}
+.shead p{color:var(--muted); font-size:13px; max-width:62ch}
+.controls{display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end}
+.ctl{display:flex; flex-direction:column; gap:5px}
+.ctl > span{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted)}
+select{font-family:"IBM Plex Sans",sans-serif; font-size:13.5px; color:var(--ink);
+  background:var(--surface); border:1px solid var(--rule-strong); border-radius:4px;
+  padding:6px 9px; min-width:190px}
+.seg{display:flex; border:1px solid var(--rule-strong); border-radius:4px; overflow:hidden; background:var(--surface)}
+.seg button{font-family:"IBM Plex Sans",sans-serif; font-size:13px; color:var(--ink-2); background:transparent;
+  border:0; border-right:1px solid var(--rule); padding:6px 12px; cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent); color:#fff; font-weight:500}
+.scenes{display:flex; flex-wrap:wrap; gap:6px}
+.scenes button{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-2);
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px; padding:4px 10px; cursor:pointer}
+.scenes button[aria-pressed="true"]{border-color:var(--accent); color:var(--accent); font-weight:500}
+button:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.panel{background:var(--surface); border:1px solid var(--rule); border-radius:6px; padding:16px 16px 10px;
+  box-shadow:var(--shadow)}
+.plot{position:relative; height:380px}
+.plot.short{height:330px}
+.legend{display:flex; flex-wrap:wrap; gap:16px; padding:10px 2px 4px; font-size:12.5px; color:var(--ink-2)}
+.legend i{display:inline-block; width:15px; height:3px; border-radius:2px; margin-right:7px; vertical-align:middle}
+.cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.card{background:var(--surface); border:1px solid var(--rule); border-radius:6px; padding:16px; box-shadow:var(--shadow)}
+.card .who{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:12px}
+.card .who i{width:9px; height:9px; border-radius:2px; display:inline-block}
+.card dl{margin:0; display:flex; flex-direction:column; gap:9px}
+.card .row{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+.card dt{font-size:12.5px; color:var(--muted)}
+.card dd{margin:0; font-family:"IBM Plex Mono",monospace; font-size:17px; font-weight:500;
+  font-variant-numeric:tabular-nums; color:var(--ink)}
+.card dd small{font-size:11.5px; color:var(--muted); font-weight:400; margin-left:3px}
+.tablewrap{overflow-x:auto; border:1px solid var(--rule); border-radius:6px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:12.5px; font-variant-numeric:tabular-nums}
+th,td{padding:7px 11px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--rule)}
+th{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); font-weight:500; position:sticky; top:0; background:var(--surface)}
+td:first-child, th:first-child, td:nth-child(2), th:nth-child(2){text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.sep td{border-top:2px solid var(--rule-strong)}
+td .dot{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:7px}
+td.best{font-weight:600; color:var(--ink)}
+.na{color:var(--muted); font-style:italic}
+footer{border-top:1px solid var(--rule); padding-top:16px; color:var(--muted); font-size:12.5px;
+  display:flex; flex-direction:column; gap:5px}
+code{font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--surface-2);
+  padding:1px 5px; border-radius:3px; color:var(--ink-2)}
+@media (max-width:820px){ .cards{grid-template-columns:1fr} .plot{height:320px} h1{font-size:26px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important; animation:none!important} }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">D-NeRF monocular benchmark · Tesla T4</p>
+  <h1>Three dynamic Gaussian Splatting methods, measured twice</h1>
+  <p class="lede">Every scene was trained under two protocols: an <b>equal iteration budget</b> (30 000 steps
+  for all methods) and an <b>equal loss budget</b> (stop as soon as the evaluation L1 reaches a common
+  per-scene target). The first asks which method reconstructs best; the second asks what the same
+  reconstruction quality costs.</p>
+  <div class="meta">
+    <span class="chip"><b>3</b> methods</span>
+    <span class="chip"><b>8</b> scenes</span>
+    <span class="chip"><b id="nruns">–</b> runs</span>
+    <span class="chip"><b id="npoints">–</b> evaluation points</span>
+    <span class="chip">800×800 · <b>20</b> held-out views</span>
+    <span class="chip">LPIPS <b>VGG</b></span>
+    <span class="chip">Colab <b>Tesla T4</b></span>
+  </div>
+</header>
+
+<div class="note">
+  <h3>Read the numbers with these three caveats</h3>
+  <ol>
+    <li><b>Lego cannot be evaluated for 4DGS native-4D.</b> The run produces no evaluation entry — a known
+    limitation already reported in the original paper, not a failure of this benchmark. It is excluded
+    from every 4DGS native-4D figure.</li>
+    <li><b>T-Rex and Jumping Jacks fixed-iteration runs of 4DGS native-4D are partial</b> (stopped at 6 000
+    and 15 000 steps). They had reached their practical ceiling on a T4: the primitive count grows to
+    8.4·10⁵ and 9.8·10⁵ and a thousand iterations costs 1 062 s and 772 s respectively. Marked with ✳.</li>
+    <li>Because 4DGS native-4D peaks early and then degrades, the <b>best</b> value of each metric over a run
+    is compared, not the final one — which is also what the partial runs allow.</li>
+    <li><b>An iteration is not the same unit of work for every method.</b> 4DGS native-4D uses the per-scene
+    batch of its own repository (1 to 24); the other two always use 1. Read optimisation steps alongside
+    the <i>training images seen</i>. Every equal-target cost on this page is measured at the first crossing
+    of the target, not at run termination.</li>
+  </ol>
+</div>
+
+<section>
+  <div class="shead">
+    <h2>Training curves</h2>
+    <p>One scene at a time, all three methods. Dashed lines are partial runs.</p>
+  </div>
+  <div class="controls">
+    <label class="ctl"><span>Metric</span>
+      <select id="curveMetric">
+        <option value="psnr">PSNR (dB)</option>
+        <option value="ssim">SSIM</option>
+        <option value="lpips">LPIPS (VGG)</option>
+        <option value="l1">Evaluation L1 loss</option>
+        <option value="ngauss">Number of Gaussians</option>
+        <option value="time">Cumulative training time (s)</option>
+      </select>
+    </label>
+    <div class="ctl"><span>Horizontal axis</span>
+      <div class="seg" id="curveX">
+        <button data-v="iter" aria-pressed="true">Optimisation steps</button>
+        <button data-v="img" aria-pressed="false">Training images seen</button>
+        <button data-v="time" aria-pressed="false">Training seconds</button>
+      </div>
+    </div>
+    <div class="ctl"><span>Protocol</span>
+      <div class="seg" id="curveMode">
+        <button data-v="iterations" aria-pressed="true">Equal iterations</button>
+        <button data-v="target_eval_loss" aria-pressed="false">Equal L1 target</button>
+      </div>
+    </div>
+  </div>
+  <div class="scenes" id="sceneChips"></div>
+  <div class="panel">
+    <div class="plot"><canvas id="curveChart"></canvas></div>
+    <div class="legend" id="curveLegend"></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>Head to head, scene by scene</h2>
+    <p>Best value reached by each method on each scene. Faded bars are partial runs.</p>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span>Protocol</span>
+      <div class="seg" id="barMode">
+        <button data-v="iterations" aria-pressed="true">Equal iterations</button>
+        <button data-v="target_eval_loss" aria-pressed="false">Equal L1 target</button>
+      </div>
+    </div>
+    <label class="ctl"><span>Quantity</span>
+      <select id="barMetric"></select>
+    </label>
+  </div>
+  <div class="panel">
+    <div class="plot short"><canvas id="barChart"></canvas></div>
+    <div class="legend" id="barLegend"></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>What the same quality costs</h2>
+    <p>Averages over the five scenes every method completed: Bouncing Balls, Hell Warrior, Hook, Mutant,
+    Stand Up. 4DGS native-4D reaches the target in the fewest steps — but with roughly three times more
+    training samples and four times the wall-clock time.</p>
+  </div>
+  <div class="cards" id="costCards"></div>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>Run table</h2>
+    <p>Every run behind the figures. Bold marks the best method on that scene and quantity.</p>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span>Protocol</span>
+      <div class="seg" id="tableMode">
+        <button data-v="iterations" aria-pressed="true">Equal iterations</button>
+        <button data-v="target_eval_loss" aria-pressed="false">Equal L1 target</button>
+      </div>
+    </div>
+  </div>
+  <div class="tablewrap"><table id="runTable"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<style>
+.findings{display:flex; flex-direction:column; gap:12px}
+.finding{background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--accent);
+  border-radius:0 6px 6px 0; padding:15px 17px; box-shadow:var(--shadow)}
+.finding.f-def{border-left-color:var(--s3)}
+.finding.f-4dg{border-left-color:var(--s1)}
+.finding.f-fud{border-left-color:var(--s2)}
+.finding .tag{display:block; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px}
+.finding h3{margin:0 0 6px; font-size:15px; font-weight:600; letter-spacing:-.005em; color:var(--ink)}
+.finding p{color:var(--ink-2); font-size:13.5px; max-width:84ch}
+.finding p + p{margin-top:7px}
+.finding .num{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; color:var(--ink)}
+</style>
+
+<section id="conclusions">
+  <div class="shead">
+    <h2>Conclusions</h2>
+    <p>What the two protocols say once every run is on the table. Averages are over the five scenes
+    completed by all three methods.</p>
+  </div>
+  <div class="findings">
+
+    <article class="finding f-def">
+      <span class="tag">If maximum quality matters and time is not the constraint</span>
+      <h3>Deformable-3DGS</h3>
+      <p>It wins on every scene and every metric, with a margin of about <span class="num">3&nbsp;dB</span>
+      (<span class="num">40.76</span> vs <span class="num">37.81&nbsp;dB</span> mean PSNR at 30&nbsp;000 steps).
+      At 30&nbsp;000 iterations it has not yet saturated its own original default of 40&nbsp;000, so this
+      comparison slightly penalises it. The price is twice the training time
+      (<span class="num">36.7</span> vs <span class="num">18.8&nbsp;min</span>) and the highest VRAM of the three
+      (<span class="num">3.3&nbsp;GB</span>).</p>
+    </article>
+
+    <article class="finding f-4dg">
+      <span class="tag">If the quality/cost ratio matters</span>
+      <h3>4DGaussians</h3>
+      <p>Second in absolute quality, but half of Deformable's training time, the lowest VRAM
+      (<span class="num">1.6&nbsp;GB</span>) and the lowest time to reach a fixed quality target
+      (<span class="num">3.5</span> vs <span class="num">6.7&nbsp;min</span>). It is the natural choice with
+      limited resources, or whenever fast iteration is what matters.</p>
+      <p>Its model on disk, however, carries a fixed component due to the HexPlane grid, independent of the
+      number of primitives: on simple scenes it can therefore occupy more than Deformable while holding fewer
+      primitives (<span class="num">17.9</span> vs <span class="num">12.2&nbsp;MB</span> at the target).</p>
+    </article>
+
+    <article class="finding f-fud">
+      <span class="tag">Fewest steps, highest cost</span>
+      <h3>4DGS with native 4D primitives</h3>
+      <p>It converges in very few optimisation steps (<span class="num">5&nbsp;258</span> against roughly
+      <span class="num">8&nbsp;300</span> to the same L1 target), but on this dataset it is the most expensive in
+      time, in model size and in number of primitives, and it is the only method that degrades if left training
+      past its own optimum (<span class="num">&minus;0.62&nbsp;dB</span> from the peak). On the scenes with large
+      batches it is not even completable on a T4.</p>
+      <p>The limit does not appear to be implementational but structural: native 4D primitives are penalised by
+      the monocular case, where every timestamp offers a single view, and the authors themselves state that they
+      introduce no architectural priors specific to this case.</p>
+    </article>
+
+    <article class="finding">
+      <span class="tag">Across all methods</span>
+      <h3>The practical constraint is time, not memory</h3>
+      <p>Peak VRAM never exceeded <span class="num">5.1&nbsp;GB</span> of the <span class="num">16</span>
+      available on the T4. What decides the feasibility of a run is wall-clock time.</p>
+    </article>
+
+  </div>
+</section>
+
+<footer>
+  <p>Source: <code>benchmark_iterations.json</code> and <code>benchmark_target_eval_loss.json</code> under
+  <code>/Work/output_monocular_dataset</code>. 46 publication figures (PNG + PDF) and the CSV tables are in
+  <code>output_monocular_dataset/analysis/</code>.</p>
+  <p>✳ partial run · n/a not evaluable for that method.</p>
+</footer>
+
+</div>
+
+<script>
+const DATA = __DATA__;
+const M = DATA.methods, S = DATA.scenes;
+const SC = {}; S.forEach(s=>SC[s.key]=s.label);
+const COL = {}; M.forEach(m=>COL[m.key]=m.color);
+const runs = DATA.runs;
+const FAIR = ["bouncingballs","hellwarrior","hook","mutant","standup"];
+
+function tok(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function theme(){
+  const dark = document.documentElement.getAttribute("data-theme")==="dark" ||
+    (!document.documentElement.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  return {
+    ink: dark? "#eef2f6":"#10151b", ink2: dark? "#b3bcc7":"#4a5460",
+    muted: dark? "#8b95a1":"#78828e", grid: dark? "#262c35":"#e3e8ed",
+    surface: dark? "#161a20":"#ffffff",
+    s: dark? {"4DGaussians":"#3987e5","4DGS-fudan":"#d95926","Deformable-3DGS":"#199e70"}
+           : {"4DGaussians":"#2a78d6","4DGS-fudan":"#eb6834","Deformable-3DGS":"#1baf7a"}
+  };
+}
+const fmt = (v,d=2)=> v==null||isNaN(v) ? "n/a"
+  : (d===0 || Math.abs(v)>=10000 ? Math.round(v).toLocaleString("en-US") : (+v).toFixed(d));
+
+/* ---------- state ---------- */
+const st = { scene:"bouncingballs", metric:"psnr", x:"iter", cmode:"iterations",
+             bmode:"iterations", bmetric:"best_psnr", tmode:"iterations" };
+
+const CURVE_LABEL = {psnr:"PSNR (dB)", ssim:"SSIM", lpips:"LPIPS (VGG)", l1:"Evaluation L1 loss",
+                     ngauss:"Number of Gaussians", time:"Cumulative training time (s)"};
+const LOGY = new Set(["lpips","l1","ngauss"]);
+
+const BAR_METRICS = {
+  iterations:[
+    ["best_psnr","Best PSNR (dB)",2,"high"],
+    ["best_ssim","Best SSIM",4,"high"],
+    ["best_lpips","Best LPIPS",4,"low"],
+    ["best_eval_l1_loss","Best evaluation L1",4,"low"],
+    ["best_psnr_iter","Iteration of the PSNR peak",0,"low"],
+    ["final_num_gaussians","Gaussians at the end of the run",0,"low"],
+    ["final_training_time_s","Training time for the whole run (s)",0,"low"],
+    ["peak_vram_mb","Peak VRAM (MB)",0,"low"]],
+  target_eval_loss:[
+    ["fc_training_time_s","Training time to the target (s)",0,"low"],
+    ["fc_total_iterations","Iterations to reach the L1 target",0,"low"],
+    ["fc_images_seen","Training images seen to the target",0,"low"],
+    ["fc_psnr","PSNR at the target (dB)",2,"high"],
+    ["fc_lpips","LPIPS at the target",4,"low"],
+    ["fc_num_gaussians","Gaussians at the target",0,"low"],
+    ["model_storage_mb","Model on disk at the target (MB)",1,"low"],
+    ["peak_vram_mb","Peak VRAM (MB)",0,"low"]]
+};
+
+function run(m,s,mode){ return runs.find(r=>r.method_short===m && r.scene===s && r.mode===mode); }
+
+/* ---------- scene chips ---------- */
+const chips = document.getElementById("sceneChips");
+S.forEach(s=>{
+  const b=document.createElement("button");
+  b.textContent=s.label; b.setAttribute("aria-pressed", s.key===st.scene);
+  b.onclick=()=>{ st.scene=s.key; [...chips.children].forEach(c=>c.setAttribute("aria-pressed", c===b)); drawCurve(); };
+  chips.appendChild(b);
+});
+
+/* ---------- segmented controls ---------- */
+function seg(id, cb){
+  const el=document.getElementById(id);
+  el.onclick=e=>{ const b=e.target.closest("button"); if(!b) return;
+    [...el.children].forEach(c=>c.setAttribute("aria-pressed", c===b)); cb(b.dataset.v); };
+}
+seg("curveX", v=>{ st.x=v; drawCurve(); });
+seg("curveMode", v=>{ st.cmode=v; drawCurve(); });
+seg("barMode", v=>{ st.bmode=v; fillBarMetrics(); drawBar(); });
+seg("tableMode", v=>{ st.tmode=v; drawTable(); });
+document.getElementById("curveMetric").onchange = e=>{ st.metric=e.target.value; drawCurve(); };
+
+function fillBarMetrics(){
+  const sel=document.getElementById("barMetric");
+  sel.innerHTML="";
+  BAR_METRICS[st.bmode].forEach(([k,l])=>{
+    const o=document.createElement("option"); o.value=k; o.textContent=l; sel.appendChild(o);
+  });
+  st.bmetric = BAR_METRICS[st.bmode][0][0];
+  sel.value = st.bmetric;
+}
+document.getElementById("barMetric").onchange = e=>{ st.bmetric=e.target.value; drawBar(); };
+
+/* ---------- charts ---------- */
+let curveChart, barChart;
+function baseOpts(t){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:"nearest", intersect:false, axis:"x"},
+    plugins:{ legend:{display:false},
+      tooltip:{ backgroundColor:t.surface, titleColor:t.ink, bodyColor:t.ink2,
+        borderColor:t.grid, borderWidth:1, padding:10, boxPadding:4,
+        titleFont:{family:'"IBM Plex Mono", monospace', size:11},
+        bodyFont:{family:'"IBM Plex Sans", sans-serif', size:12.5} } }
+  };
+}
+function drawCurve(){
+  const t=theme();
+  const ds=[], legend=[];
+  M.forEach(m=>{
+    const c = DATA.curves[m.key+"|"+st.scene+"|"+st.cmode];
+    if(!c) { legend.push({label:m.label, color:t.s[m.key], note:"no data"}); return; }
+    const xs = st.x==="iter" ? c.iter : (st.x==="img" ? c.img : c.time);
+    const ys = c[st.metric];
+    ds.push({ label:m.label + (c.partial?" ✳":""),
+      data: xs.map((x,i)=>({x:x, y:ys[i]})),
+      borderColor:t.s[m.key], backgroundColor:t.s[m.key], borderWidth:2,
+      borderDash: c.partial?[6,4]:[], pointRadius:0, pointHoverRadius:4, tension:.15 });
+    legend.push({label:m.label + (c.partial?" ✳ partial":""), color:t.s[m.key]});
+  });
+  const cfg={ type:"line", data:{datasets:ds}, options:Object.assign(baseOpts(t),{
+      scales:{
+        x:{ type:"linear", grid:{color:t.grid, drawTicks:false}, border:{color:t.grid},
+            ticks:{color:t.muted, font:{family:'"IBM Plex Mono", monospace', size:10},
+              callback:v=> st.x==="time" ? v : (v>=1000? (v/1000)+"k" : v) },
+            title:{display:true, color:t.ink2, text: st.x==="iter"?"Optimisation steps (coarse stage included)"
+              : (st.x==="img" ? "Training images seen (steps × batch size)" : "Training time (s)"),
+              font:{family:'"IBM Plex Sans", sans-serif', size:11.5}} },
+        y:{ type: LOGY.has(st.metric)?"logarithmic":"linear",
+            grid:{color:t.grid, drawTicks:false}, border:{color:t.grid},
+            ticks:{color:t.muted, font:{family:'"IBM Plex Mono", monospace', size:10}},
+            title:{display:true, color:t.ink2, text:CURVE_LABEL[st.metric],
+              font:{family:'"IBM Plex Sans", sans-serif', size:11.5}} }
+      }})};
+  if(curveChart) curveChart.destroy();
+  curveChart = new Chart(document.getElementById("curveChart"), cfg);
+  const nolego = st.scene==="lego" ? ' <span class="na">Lego is not evaluable for 4DGS native-4D.</span>' : "";
+  document.getElementById("curveLegend").innerHTML =
+    legend.map(l=>`<span><i style="background:${l.color}"></i>${l.label}</span>`).join("") + nolego;
+}
+function drawBar(){
+  const t=theme();
+  const spec = BAR_METRICS[st.bmode].find(x=>x[0]===st.bmetric);
+  const ds = M.map(m=>{
+    const vals = S.map(s=>{ const r=run(m.key,s.key,st.bmode); const v = r? r[st.bmetric] : null;
+      return (v===undefined||v===null||isNaN(v))?null:v; });
+    const part = S.map(s=>{ const r=run(m.key,s.key,st.bmode); return r && r.partial; });
+    return { label:m.label, data:vals,
+      backgroundColor: part.map(p=> p? t.s[m.key]+"66" : t.s[m.key]),
+      borderColor: t.s[m.key], borderWidth: part.map(p=> p?1.5:0),
+      borderRadius:3, borderSkipped:false, categoryPercentage:.74, barPercentage:.86 };
+  });
+  const cfg={ type:"bar",
+    data:{ labels:S.map(s=>{ const r=run("4DGS-fudan",s.key,st.bmode); return s.label + (r&&r.partial?" ✳":""); }), datasets:ds },
+    options:Object.assign(baseOpts(t),{
+      interaction:{mode:"index", intersect:false},
+      scales:{
+        x:{ grid:{display:false}, border:{color:t.grid},
+            ticks:{color:t.ink2, font:{family:'"IBM Plex Sans", sans-serif', size:11}} },
+        y:{ type: (st.bmetric.includes("gaussians")?"logarithmic":"linear"),
+            grid:{color:t.grid, drawTicks:false}, border:{color:t.grid},
+            ticks:{color:t.muted, font:{family:'"IBM Plex Mono", monospace', size:10}},
+            title:{display:true, color:t.ink2, text: spec[1] + (spec[3]==="low"?"  (lower is better)":"  (higher is better)"),
+              font:{family:'"IBM Plex Sans", sans-serif', size:11.5}} }
+      }})};
+  if(barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById("barChart"), cfg);
+  document.getElementById("barLegend").innerHTML =
+    M.map(m=>`<span><i style="background:${t.s[m.key]}"></i>${m.label}</span>`).join("") +
+    `<span class="na">✳ partial run · gaps are runs that could not be evaluated</span>`;
+}
+
+/* ---------- cost cards ---------- */
+function mean(a){ const v=a.filter(x=>x!=null&&!isNaN(x)); return v.length? v.reduce((p,c)=>p+c,0)/v.length : null; }
+function drawCards(){
+  const t=theme(); const el=document.getElementById("costCards"); el.innerHTML="";
+  M.forEach(m=>{
+    const lo = FAIR.map(s=>run(m.key,s,"target_eval_loss")), it = FAIR.map(s=>run(m.key,s,"iterations"));
+    const rows=[
+      ["Iterations to the L1 target", fmt(mean(lo.map(r=>r&&r.fc_total_iterations)),0), ""],
+      ["Training images seen to the target", fmt(mean(lo.map(r=>r&&r.fc_images_seen)),0), ""],
+      ["Training time to the target", fmt(mean(lo.map(r=>r&&r.fc_training_time_s))/60,1), "min"],
+      ["PSNR at the target", fmt(mean(lo.map(r=>r&&r.fc_psnr)),2), "dB"],
+      ["Model on disk at the target", fmt(mean(lo.map(r=>r&&r.model_storage_mb)),1), "MB"],
+      ["Best PSNR at 30k iterations", fmt(mean(it.map(r=>r&&r.best_psnr)),2), "dB"],
+      ["Seconds per 1 000 iterations", fmt(mean(it.map(r=>r&&1000*r.final_training_time_s/r.final_total_iterations)),0), "s"],
+      ["Peak VRAM", fmt(mean(it.map(r=>r&&r.peak_vram_mb)),0), "MB"]
+    ];
+    const d=document.createElement("div"); d.className="card";
+    d.innerHTML = `<div class="who"><i style="background:${t.s[m.key]}"></i>${m.label}</div><dl>`+
+      rows.map(r=>`<div class="row"><dt>${r[0]}</dt><dd>${r[1]}${r[2]?`<small>${r[2]}</small>`:""}</dd></div>`).join("")+`</dl>`;
+    el.appendChild(d);
+  });
+}
+
+/* ---------- table ---------- */
+const TCOLS = {
+  iterations:[["best_psnr","Best PSNR",2,"high"],["best_ssim","Best SSIM",4,"high"],
+    ["best_lpips","Best LPIPS",4,"low"],["best_eval_l1_loss","Best L1",4,"low"],
+    ["best_psnr_iter","Peak @ iter",0,null],["final_psnr","PSNR @ end",2,null],
+    ["final_num_gaussians","Gaussians",0,null],["final_training_time_s","Train s",0,"low"],
+    ["peak_vram_mb","VRAM MB",0,"low"]],
+  target_eval_loss:[["target_eval_loss","L1 target",6,null],["batch_size","Batch",0,null],
+    ["fc_total_iterations","Iters",0,"low"],["fc_images_seen","Images seen",0,"low"],
+    ["fc_training_time_s","Train s",0,"low"],["fc_psnr","PSNR",2,"high"],
+    ["fc_ssim","SSIM",4,"high"],["fc_lpips","LPIPS",4,"low"],
+    ["fc_num_gaussians","Gaussians",0,"low"],["model_storage_mb","Model MB",1,"low"],
+    ["peak_vram_mb","VRAM MB",0,"low"]]
+};
+function drawTable(){
+  const t=theme(); const cols=TCOLS[st.tmode];
+  const thead=document.querySelector("#runTable thead"), tb=document.querySelector("#runTable tbody");
+  thead.innerHTML = "<tr><th>Scene</th><th>Method</th>"+cols.map(c=>`<th>${c[1]}</th>`).join("")+"</tr>";
+  let html="";
+  S.forEach((s,si)=>{
+    const rs = M.map(m=>run(m.key,s.key,st.tmode));
+    const best={};
+    cols.forEach(c=>{ if(!c[3]) return;
+      const vals=rs.map(r=> r&&!r.missing&&r[c[0]]!=null&&!isNaN(r[c[0]])? r[c[0]] : null).filter(v=>v!=null);
+      if(vals.length) best[c[0]] = c[3]==="high"? Math.max(...vals) : Math.min(...vals);
+    });
+    M.forEach((m,mi)=>{
+      const r=rs[mi];
+      html += `<tr class="${mi===0&&si>0?"sep":""}"><td>${mi===0?s.label:""}</td>`+
+        `<td><span class="dot" style="background:${t.s[m.key]}"></span>${m.label}${r&&r.partial?" ✳":""}</td>`;
+      cols.forEach(c=>{
+        const v = r? r[c[0]] : null;
+        const ok = v!=null && !isNaN(v);
+        const isBest = ok && best[c[0]]!=null && Math.abs(v-best[c[0]])<1e-9;
+        html += `<td class="${isBest?"best":""}">${ok? fmt(v,c[2]) : '<span class="na">n/a</span>'}</td>`;
+      });
+      html += "</tr>";
+    });
+  });
+  tb.innerHTML=html;
+}
+
+/* ---------- boot ---------- */
+document.getElementById("nruns").textContent = runs.filter(r=>!r.missing).length;
+document.getElementById("npoints").textContent =
+  Object.values(DATA.curves).reduce((p,c)=>p+c.iter.length,0).toLocaleString("en-US");
+fillBarMetrics();
+function renderAll(){ drawCurve(); drawBar(); drawCards(); drawTable(); }
+renderAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
+new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+</script>

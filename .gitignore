@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+*.tmp
+docs/HARDWARE_ANALYSIS.md
+docs/THIRD_PARTY_LICENCES.md
+docs/VERIFICATION.md
+
+# Full 46-figure analysis set: only the 7 figures backing a public claim stay
+# committed (see results/analysis/README_analysis.md); the rest regenerate
+# from the raw JSON via results/analysis/scripts/run_all.sh.
+results/analysis/figures/*.png
+!results/analysis/figures/08_psnr_vs_traintime.png
+!results/analysis/figures/17_iso_loss_time_to_target.png
+!results/analysis/figures/22_peak_vram_iters.png
+!results/analysis/figures/27_peak_and_degradation.png
+!results/analysis/figures/30_quality_vs_cost_scatter.png
+!results/analysis/figures/31_aggregate_quality_dots.png
+!results/analysis/figures/44_winner_by_budget_definition.png
+results/analysis/figures_all.pdf
+results/analysis/README_analysis_full.md

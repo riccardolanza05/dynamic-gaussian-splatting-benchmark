@@ -1,0 +1,143 @@
+{
+  "method": "4DGaussians / HexPlane (Wu et al.)",
+  "scene": "hellwarrior",
+  "mode": "target_eval_loss",
+  "config": {
+    "method": "4DGaussians / HexPlane (Wu et al.)",
+    "scene": "hellwarrior",
+    "mode": "target_eval_loss",
+    "json_path": "/content/drive/MyDrive/4DGaussians_output/hellwarrior_loss0p005358/benchmark/benchmark_target_eval_loss.json",
+    "eval_every_n_iters": 1000,
+    "eval_every_n_seconds": 30.0,
+    "max_iterations": 27000,
+    "safety_max_iterations": 60000,
+    "target_metric": "eval_loss",
+    "target_psnr": 30.0,
+    "target_eval_loss": 0.005358,
+    "min_iterations_before_stop": 1000,
+    "target_consecutive_hits": 2,
+    "eval_loss_kind": "l1",
+    "lambda_dssim": 0.2,
+    "lpips_net": "vgg",
+    "max_eval_views": 0,
+    "eval_at_first_iteration": true,
+    "source_path": "/content/4DGaussians/dataset_dir/data/hellwarrior",
+    "model_path": "/content/train_outputs/hellwarrior_loss0p005358",
+    "batch_size": 1,
+    "iteration_offset": 3000
+  },
+  "status": "stopped_on_target",
+  "target_reached": true,
+  "entries": [
+    {
+      "iteration": 1,
+      "total_iterations": 3001,
+      "images_seen": 3001,
+      "stage": "fine",
+      "training_time_s": 31.00418734550476,
+      "wall_time_s": 31.00418734550476,
+      "benchmark_overhead_s": 0.0,
+      "psnr": 27.239599227905273,
+      "ssim": 0.8782393366098404,
+      "lpips": 0.11251738332211972,
+      "eval_l1_loss": 0.013503389712423087,
+      "eval_photometric_loss": 0.03515484444797039,
+      "eval_loss": 0.013503389712423087,
+      "eval_loss_kind": "l1",
+      "num_eval_views": 20,
+      "eval_resolution": [
+        800,
+        800
+      ],
+      "num_gaussians": 4421,
+      "train_batch_loss": 0.0101022245362401,
+      "eval_duration_s": 5.4049224853515625
+    },
+    {
+      "iteration": 1019,
+      "total_iterations": 4019,
+      "images_seen": 4019,
+      "stage": "fine",
+      "training_time_s": 61.01320958137512,
+      "wall_time_s": 66.43042731285095,
+      "benchmark_overhead_s": 5.41721773147583,
+      "psnr": 33.36820201873779,
+      "ssim": 0.9468143850564956,
+      "lpips": 0.10155987106263638,
+      "eval_l1_loss": 0.005336882080882788,
+      "eval_photometric_loss": 0.014906628653407108,
+      "eval_loss": 0.005336882080882788,
+      "eval_loss_kind": "l1",
+      "num_eval_views": 20,
+      "eval_resolution": [
+        800,
+        800
+      ],
+      "num_gaussians": 4741,
+      "train_batch_loss": 0.005910294596105814,
+      "eval_duration_s": 3.818885087966919
+    },
+    {
+      "iteration": 2053,
+      "total_iterations": 5053,
+      "images_seen": 5053,
+      "stage": "fine",
+      "training_time_s": 91.01702332496643,
+      "wall_time_s": 100.26876902580261,
+      "benchmark_overhead_s": 9.251745700836182,
+      "psnr": 34.97339515686035,
+      "ssim": 0.9553779333829879,
+      "lpips": 0.09066641740500928,
+      "eval_l1_loss": 0.004382774222176522,
+      "eval_photometric_loss": 0.012430632701143631,
+      "eval_loss": 0.004382774222176522,
+      "eval_loss_kind": "l1",
+      "num_eval_views": 20,
+      "eval_resolution": [
+        800,
+        800
+      ],
+      "num_gaussians": 5445,
+      "train_batch_loss": 0.003842234378680587,
+      "eval_duration_s": 3.7711424827575684
+    }
+  ],
+  "final": {
+    "iteration": 2053,
+    "total_iterations": 5053,
+    "images_seen": 5053,
+    "stage": "fine",
+    "training_time_s": 91.01702332496643,
+    "wall_time_s": 100.26876902580261,
+    "benchmark_overhead_s": 9.251745700836182,
+    "psnr": 34.97339515686035,
+    "ssim": 0.9553779333829879,
+    "lpips": 0.09066641740500928,
+    "eval_l1_loss": 0.004382774222176522,
+    "eval_photometric_loss": 0.012430632701143631,
+    "eval_loss": 0.004382774222176522,
+    "eval_loss_kind": "l1",
+    "num_eval_views": 20,
+    "eval_resolution": [
+      800,
+      800
+    ],
+    "num_gaussians": 5445,
+    "train_batch_loss": 0.003842234378680587,
+    "eval_duration_s": 3.7711424827575684
+  },
+  "best_psnr": 34.97339515686035,
+  "best_psnr_iteration": 2053,
+  "target_metric": "eval_loss",
+  "process_wall_time_s": 124.71318554878235,
+  "peak_vram_mb_nvidia_smi": 1547.0,
+  "storage": {
+    "required_files": [
+      "cfg_args",
+      "point_cloud/iteration_2053/point_cloud.ply",
+      "point_cloud/iteration_2053/deformation.pth"
+    ],
+    "model_storage_mb": 12.4428,
+    "full_folder_mb": 13.4696
+  }
+}
