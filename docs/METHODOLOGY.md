@@ -18,7 +18,7 @@ Not benchmarked: Dynamic 3D Gaussians (Luiten et al.), which requires multi-view
 
 **Dataset.** D-NeRF synthetic, monocular, 8 scenes (`bouncingballs`, `hellwarrior`, `hook`, `jumpingjacks`, `lego`, `mutant`, `standup`, `trex`), native 800×800 RGBA images, 20 test views per scene.
 
-**Hardware.** Google Colab free tier, NVIDIA Tesla T4 (16 GB), one Google account per method.
+**Hardware.** Google Colab free tier, NVIDIA Tesla T4 (16 GB).
 
 The three representations differ in a way that explains most of the results. In the two canonical-space methods every primitive exists at every instant, so every training image constrains all primitives. In the native-4D method a primitive is constrained only by the views that fall inside its temporal support; in the monocular setting, where each instant has a single view, the problem is much less constrained.
 
