@@ -14,13 +14,12 @@ def at(m,s,xcol,xval,ycol):
     if len(x)<2 or xval>x.max(): return np.nan
     return float(np.interp(xval,x,y))
 
-IMG_BUDGET=30000
 def tbudget(s):
     v=[cur(m,s,"iterations").training_time_s.max() for m in ORDER if not cur(m,s,"iterations").empty]
     return float(np.nanmin(v))
 
 # ---- 39: the same runs on three budget axes ----
-rows=["hellwarrior","bouncingballs","mutant","trex"]
+rows=[s for s in HIGHLIGHT_SCENES if s in SCENES]
 axes_def=[("iter_total","Optimisation steps",lambda v: f"{v/1000:g}k" if v>=1000 else f"{v:g}"),
           ("images_seen","Training images seen",lambda v: f"{v/1000:g}k" if v>=1000 else f"{v:g}"),
           ("training_time_s","Wall-clock training time (s)",lambda v: f"{v/60:g}m" if v>=60 else f"{v:g}s")]
@@ -58,7 +57,7 @@ def grouped(getter,ylabel,title,name,fmt="{:.2f}",lower=False,note="",annotate=T
     x=np.arange(len(SCENES)); w=0.26
     fig,ax=plt.subplots(figsize=(12.6,4.2)); nan=[]
     for i,m in enumerate(ORDER):
-        for xi,s in zip(x+(i-1)*w,SCENES):
+        for xi,s in zip(x+(i-(len(ORDER)-1)/2)*w,SCENES):
             v=getter(m,s)
             if v is None or (isinstance(v,float) and np.isnan(v)): nan.append(xi); continue
             ax.bar(xi,v,w*0.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
@@ -100,8 +99,8 @@ for i,m in enumerate(ORDER):
         if d.empty: per_it.append(np.nan); per_img.append(np.nan); continue
         t=d.training_time_s.max()
         per_it.append(1000*t/d.iter_total.max()); per_img.append(1000*t/d.images_seen.max())
-    axes[0].bar(x+(i-1)*w,per_it,w*.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
-    axes[1].bar(x+(i-1)*w,per_img,w*.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
+    axes[0].bar(x+(i-(len(ORDER)-1)/2)*w,per_it,w*.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
+    axes[1].bar(x+(i-(len(ORDER)-1)/2)*w,per_img,w*.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
 for ax,t,yl in zip(axes,["Seconds per 1 000 optimisation steps","Seconds per 1 000 training images"],
                    ["s / 1 000 steps","s / 1 000 images"]):
     ax.set_xticks(x); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES],rotation=25,ha="right",fontsize=8,color=INK2)

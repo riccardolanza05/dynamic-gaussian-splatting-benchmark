@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import *
 R=runs.copy()
 IT=R[R["mode"]=="iterations"]; LO=R[R["mode"]=="target_eval_loss"]
-FAIR=["bouncingballs","hellwarrior","hook","mutant","standup"]
+from study import FAIR   # scenes completed by every method of the active study
 
 t1=IT[["method","scene","partial","best_psnr","best_psnr_iter","best_ssim","best_lpips",
        "best_eval_l1_loss","final_psnr","final_total_iterations","final_training_time_s",

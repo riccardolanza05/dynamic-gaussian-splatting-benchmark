@@ -17,7 +17,7 @@ def grouped_bar(getter, ylabel, title, name, mode="iterations", fmt="{:.2f}",
     nanpos = []
     for i,m in enumerate(ORDER):
         vals = [getter(m,s) for s in scenes]
-        pos  = x + (i-1)*w
+        pos  = x + (i-(len(ORDER)-1)/2)*w
         hatch = ["///" if is_partial(m,s,mode) else "" for s in scenes]
         for xi,v,h,s in zip(pos, vals, hatch, scenes):
             if np.isnan(v):

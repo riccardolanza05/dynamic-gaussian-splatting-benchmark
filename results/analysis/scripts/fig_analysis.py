@@ -6,7 +6,7 @@ from matplotlib.colors import TwoSlopeNorm, LinearSegmentedColormap
 R = runs.copy()
 IT = R[R["mode"]=="iterations"].set_index(["method_short","scene"])
 LO = R[R["mode"]=="target_eval_loss"].set_index(["method_short","scene"])
-FAIR = ["bouncingballs","hellwarrior","hook","mutant","standup"]   # complete for all 3 methods
+from study import FAIR   # scenes completed by every method of the active study
 BLUE = LinearSegmentedColormap.from_list("b",["#cde2fb","#9ec5f4","#5598e7","#2a78d6","#184f95","#0d366b"])
 DIV  = LinearSegmentedColormap.from_list("d",["#d03b3b","#f0efec","#2a78d6"])
 
@@ -36,7 +36,7 @@ for ax,(col,tit,fmt,low) in zip(axes.ravel(), specs):
             ax.text(j,i,txt,ha="center",va="center",fontsize=7.6,color=colr,fontweight=wt)
     ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES],
                   rotation=25, ha="right", fontsize=7.5, color=INK2)
-    ax.set_yticks(range(3)); ax.set_yticklabels(ORDER, fontsize=8, color=INK2)
+    ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=8, color=INK2)
     ax.set_title(tit+("  (lower is better)" if low else ""), color=INK, loc="left", fontweight="bold", fontsize=9.5)
     ax.tick_params(length=0); [sp.set_visible(False) for sp in ax.spines.values()]
 fig.suptitle("Per-scene comparison at an equal iteration budget — colour = rank within the scene (dark = best)",
@@ -48,14 +48,14 @@ fig, ax = plt.subplots(figsize=(12.4,3.2))
 M = np.array([[val(IT,m,s,"best_psnr") for s in SCENES] for m in ORDER])
 D = M - np.nanmax(M,axis=0, keepdims=True)
 im = ax.imshow(D, cmap=DIV, norm=TwoSlopeNorm(vmin=np.nanmin(D), vcenter=0, vmax=0.001), aspect="auto")
-for i in range(3):
+for i in range(len(ORDER)):
     for j in range(len(SCENES)):
         v=D[i,j]
         ax.text(j,i,"n/a" if np.isnan(v) else ("best" if v==0 else f"{v:+.2f}"),
                 ha="center",va="center",fontsize=8,color=INK if (np.isnan(v) or v>-4) else "#ffffff",
                 fontweight="bold" if v==0 else "normal")
 ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES], fontsize=8.5, color=INK2)
-ax.set_yticks(range(3)); ax.set_yticklabels(ORDER, fontsize=9, color=INK2); ax.tick_params(length=0)
+ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=9, color=INK2); ax.tick_params(length=0)
 [sp.set_visible(False) for sp in ax.spines.values()]
 fig.suptitle("PSNR gap to the best method on each scene (dB) — equal-iteration budget",
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.06)
@@ -86,9 +86,9 @@ x = np.arange(len(SCENES)); w=0.26
 for i,m in enumerate(ORDER):
     pk  = [val(IT,m,s,"best_psnr_iter") for s in SCENES]
     drp = [val(IT,m,s,"best_psnr")-val(IT,m,s,"final_psnr") for s in SCENES]
-    axes[0].bar(x+(i-1)*w, pk, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
+    axes[0].bar(x+(i-(len(ORDER)-1)/2)*w, pk, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
                 hatch=["///" if is_partial(m,s,"iterations") else "" for s in SCENES], zorder=3)
-    axes[1].bar(x+(i-1)*w, drp, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
+    axes[1].bar(x+(i-(len(ORDER)-1)/2)*w, drp, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
                 hatch=["///" if is_partial(m,s,"iterations") else "" for s in SCENES], zorder=3)
 for ax,t,yl in zip(axes,["Iteration of peak PSNR","PSNR lost between peak and end of run"],
                    ["Iteration","Peak PSNR − final PSNR (dB)"]):
@@ -108,8 +108,8 @@ fig, axes = plt.subplots(1,2, figsize=(12.8,4.0))
 for k,(th,ax) in enumerate(zip([25,30],axes)):
     for i,m in enumerate(ORDER):
         v=[first_reach(m,s,th) for s in SCENES]
-        ax.bar(x+(i-1)*w, v, w*0.92, color=C[m], edgecolor=SURF, lw=1.2, zorder=3)
-        for xi,vv,s in zip(x+(i-1)*w, v, SCENES):
+        ax.bar(x+(i-(len(ORDER)-1)/2)*w, v, w*0.92, color=C[m], edgecolor=SURF, lw=1.2, zorder=3)
+        for xi,vv,s in zip(x+(i-(len(ORDER)-1)/2)*w, v, SCENES):
             if np.isnan(vv):
                 ax.text(xi, 200, "never" if not cur(m,s,"iterations").empty else "n/a",
                         rotation=90, fontsize=7, color=MUTED, ha="center", va="bottom", style="italic")

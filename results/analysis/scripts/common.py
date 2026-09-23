@@ -14,15 +14,13 @@ TAB  = os.path.join(OUT, "tables")
 for d in (FIG, TAB): os.makedirs(d, exist_ok=True)
 
 SURF="#fcfcfb"; INK="#0b0b0b"; INK2="#52514e"; MUTED="#898781"; GRID="#e1e0d9"; AXIS="#c3c2b7"
-C = {"4DGaussians":"#2a78d6", "4DGS-fudan":"#eb6834", "Deformable-3DGS":"#1baf7a"}
-ORDER = ["4DGaussians","4DGS-fudan","Deformable-3DGS"]
-LABEL = {"4DGaussians":"4DGaussians (Wu et al.)",
-         "4DGS-fudan":"4DGS native-4D (fudan-zvg)",
-         "Deformable-3DGS":"Deformable-3DGS (Yang et al.)"}
-SCENES = ["bouncingballs","hellwarrior","hook","jumpingjacks","lego","mutant","standup","trex"]
-SCENE_LABEL = {"bouncingballs":"Bouncing Balls","hellwarrior":"Hell Warrior","hook":"Hook",
-               "jumpingjacks":"Jumping Jacks","lego":"Lego","mutant":"Mutant",
-               "standup":"Stand Up","trex":"T-Rex"}
+
+# Method and scene naming, colours, flags and caveats: one table per study
+# (GS_STUDY=monocular by default, GS_STUDY=n3dv for the multi-view one).
+from study import (STUDY, DATASET, C, ORDER, LABEL, SCENES, SCENE_LABEL,
+                   FAIR, PARTIAL, NOT_EVAL, CAVEAT, FAIRNOTE, RADARNOTE,
+                   MISSING_SCENE_FILL, HIGHLIGHT_SCENES, IMG_BUDGET,
+                   NMETHODS_WORD, MEANNOTE, NOTE36)
 
 plt.rcParams.update({
  "figure.facecolor":SURF, "axes.facecolor":SURF, "savefig.facecolor":SURF,
@@ -38,12 +36,24 @@ plt.rcParams.update({
 
 curves = pd.read_csv(os.path.join(TAB,"curves_all.csv"))
 runs   = pd.read_csv(os.path.join(TAB,"runs_summary.csv"))
-runs["scene"] = runs["scene"].fillna("lego")
+if MISSING_SCENE_FILL:
+    runs["scene"] = runs["scene"].fillna(MISSING_SCENE_FILL)
 # total iterations including 4DGaussians coarse stage
 curves["iter_total"] = curves["total_iterations"].fillna(curves["iteration"])
-# flags
-PARTIAL = {("4DGS-fudan","trex","iterations"), ("4DGS-fudan","jumpingjacks","iterations")}
-NOT_EVAL = {("4DGS-fudan","lego")}
+# PARTIAL and NOT_EVAL come from study.py; every figure honours them automatically.
+
+# FAIR is the set of scenes the aggregates average over, and it is a claim: every method
+# completed every scene in it. A half-finished loop would otherwise average over scenes a
+# method never ran, silently. Warn rather than fail, so a partial run can still be inspected.
+_missing = [(m, s) for m in ORDER for s in FAIR
+            if runs[(runs.method_short == m) & (runs.scene == s)
+                    & (runs["mode"] == "iterations")].empty]
+if _missing:
+    print("WARNING: FAIR lists %d method/scene pairs with no Protocol A run: %s"
+          % (len(_missing), _missing))
+    print("         The aggregate tables and figures will average over fewer runs than they")
+    print("         claim. Trim FAIR in study.py, or finish the loop, before quoting them.")
+
 
 def is_partial(m,s,mode): return (m,s,mode) in PARTIAL
 def cur(m,s,mode):
@@ -65,6 +75,3 @@ def method_legend(fig, extra=None, ncol=4, y=0.995):
     h=[Line2D([],[],color=C[m],lw=2.4,label=LABEL[m]) for m in ORDER]
     if extra: h += extra
     fig.legend(handles=h, loc="upper center", bbox_to_anchor=(0.5,y), ncol=ncol)
-
-CAVEAT = ("Caveats: Lego could not be evaluated for 4DGS native-4D (known limitation reported in the original paper). "
-          "T-Rex and Jumping Jacks fixed-iteration runs of 4DGS native-4D are partial (Colab T4 budget) and are marked as such.")

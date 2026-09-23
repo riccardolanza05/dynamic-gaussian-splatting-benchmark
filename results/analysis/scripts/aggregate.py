@@ -6,16 +6,9 @@ ROOT = os.environ.get("GS_ROOT") or os.path.dirname(os.path.dirname(
 OUT  = os.path.join(ROOT, "analysis")
 os.makedirs(os.path.join(OUT,"tables"), exist_ok=True)
 
-METHOD_DIR = {
- "4dgaussian_output": "4DGaussians (Wu et al.)",
- "4dgs_fudan_output": "4DGS native-4D (fudan-zvg)",
- "deformablegaussian": "Deformable-3DGS (Yang et al.)",
-}
-SHORT = {
- "4DGaussians (Wu et al.)": "4DGaussians",
- "4DGS native-4D (fudan-zvg)": "4DGS-fudan",
- "Deformable-3DGS (Yang et al.)": "Deformable-3DGS",
-}
+from study import METHOD_DIR, SHORT, STUDY
+
+print("study: %s" % STUDY)
 
 rows_c, rows_r = [], []
 for mdir, mname in METHOD_DIR.items():
