@@ -22,6 +22,9 @@ results/analysis/figures/*.pdf
 results/analysis/figures_all.pdf
 results/analysis/README_analysis_full.md
 
+# Executed-notebook logs written by scripts/run_benchmark.py
+logs/
+
 # Generator of the multi-view notebooks 04-07. Kept locally, deliberately not published:
 # the committed .ipynb files are the source of truth (see docs/DISCLOSURES_MULTIVIEW.md 6).
 notebooks/_build/
