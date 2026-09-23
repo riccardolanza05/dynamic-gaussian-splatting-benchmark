@@ -11,6 +11,7 @@ docs/VERIFICATION.md
 # committed (see results/analysis/README_analysis.md); the rest regenerate
 # from the raw JSON via results/analysis/scripts/run_all.sh.
 results/analysis/figures/*.png
+results/analysis/figures/*.pdf
 !results/analysis/figures/08_psnr_vs_traintime.png
 !results/analysis/figures/17_iso_loss_time_to_target.png
 !results/analysis/figures/22_peak_vram_iters.png
@@ -20,3 +21,7 @@ results/analysis/figures/*.png
 !results/analysis/figures/44_winner_by_budget_definition.png
 results/analysis/figures_all.pdf
 results/analysis/README_analysis_full.md
+
+# Generator of the multi-view notebooks 04-07. Kept locally, deliberately not published:
+# the committed .ipynb files are the source of truth (see docs/DISCLOSURES_MULTIVIEW.md 6).
+notebooks/_build/
