@@ -1,16 +1,17 @@
 # Open decisions, multi-view study
 
-Three choices in the multi-view extension are **judgement calls, not facts**. Each is implemented with a default and a switch, so none of them blocks a run; but each changes what the resulting numbers mean, and the default was chosen by the person who wrote the notebooks, not by the person who owns the study.
+Four choices in the multi-view extension are **judgement calls, not facts**. Three of them are implemented with a default and a switch, so they do not block a run; the fourth — which GPU — has no default, because it is chosen when the machine is started. Each changes what the resulting numbers mean, and the defaults were chosen by the person who wrote the notebooks, not by the person who owns the study.
 
 This page exists so the decision can be taken later, with the trade-off in front of you, rather than discovered when the tables are already built. Each entry says what is implemented today, what the alternative is, what it costs to switch, and what the number means under each option.
 
-Status of all three: **default in place, not yet decided.** Nothing here has to be settled before running Protocol A; but #2 is expensive to change afterwards, so read it first.
+Status of all four: **not yet decided.** Decisions 1–3 have a working default, so nothing blocks a run; decision 4 has none and has to be taken before the first run. Decisions 2 and 4 are expensive to change afterwards, so read those first.
 
 | # | Decision | Current default | Cost of changing later |
 |---|---|---|---|
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | `"native"` | one knob, rerun that notebook |
 | [2](#2-temporal-window-50-frames) | Temporal window | 50 frames | **everything must be rerun** |
 | [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | `ours_lite` | one knob, rerun that notebook |
+| [4](#4-which-gpu) | Which GPU the whole study runs on | none — **must be chosen before the first run** | **everything must be rerun** |
 
 ---
 
@@ -35,7 +36,7 @@ With the authors' values (10 000 and 2 000) and a 50-frame window that is **108 
 * **What the number means:** what this method does when you run it as its authors intend. Comparable with their own results in kind, though not in value (see decision 2).
 * **What it costs:** the equal-iteration axis of Protocol A stops being equal for this method. A "Protocol A" table would put 108 000 steps next to 30 000 and the step column would be misleading on its own.
 * **Why it was chosen as the default:** this is the precedent the monocular study already set. It did not equalise the per-scene `batch_size` of 4DGS native-4D (1 to 24 views per step), because doing so would have reported a number about a method nobody runs; instead it declared the difference and analysed it on the `images_seen` axis (see [METHODOLOGY.md](METHODOLOGY.md) §3.5 and [RESULTS.md](RESULTS.md) §4). The same argument applies here, more strongly: the per-frame budget is not a tuning knob but the shape of the algorithm.
-* **Wall-clock consequence:** 108 000 steps at batch 1 on a T4. This is the longest run of the four notebooks by a wide margin, and the one most likely to hit a Colab session limit. The loop is resumable per scene, but not mid-scene.
+* **Wall-clock consequence:** 108 000 steps at batch 1. This is by a wide margin the longest run of the four notebooks, and the one whose cost is most sensitive to decision 4. The loop is resumable per scene, but not mid-scene.
 
 ### Option B — `"aligned"`
 
@@ -63,10 +64,10 @@ If the point of the multi-view study is *"what do these four methods do on multi
 
 ### Why 50 and not 300
 
-N3DV sequences are 300 frames at 30 fps. Three constraints, each of which alone would force a shorter window on a free-tier T4:
+N3DV sequences are 300 frames at 30 fps. Three constraints, each of which alone would force a shorter window on a single cloud GPU:
 
 * **Spacetime Gaussians covers a sequence in chunks of 50 frames by construction** (`duration: 50` in every official N3DV config). At 300 frames it is six independent models per scene: six trainings, six sets of metrics to merge and six times the storage. The benchmark has no defined way to attribute one PSNR to six models.
-* **Dynamic 3D Gaussians costs a fixed number of steps per frame** (decision 1). At 300 frames the native schedule is **608 000 steps** per scene. On a T4 that is not a long run, it is an impossible one.
+* **Dynamic 3D Gaussians costs a fixed number of steps per frame** (decision 1). At 300 frames the native schedule is **608 000 steps** per scene, which on any single GPU you would rent by the hour is not a long run but an impractical one.
 * **Disk.** One scene at 1352×1014, 21 cameras × 50 frames is already 15–20 GB of extracted PNG; 300 frames is six times that on a runtime that also has to hold the model and the checkpoints.
 
 Fifty frames is the longest window where all four methods fit the same hardware *and* where Spacetime Gaussians' native chunk equals the whole window, so no method is penalised by chunking. It also makes the test split exactly 50 views for every method, which is what lets `MAX_EVAL_VIEWS` stay at `0` and keeps the evaluation L1 directly comparable, exactly as in the monocular study.
@@ -140,12 +141,45 @@ Whether the multi-view study wants **the methods as their authors present them**
 
 ---
 
+---
+
+## 4. Which GPU
+
+**Where:** not in the code at all — it is what you select when you start the machine. See [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md#which-gpu-to-choose--read-this-before-the-first-run).
+
+### Why this is a decision and not a detail
+
+Two of the ten monitored metrics are **training time** and **peak VRAM**. Neither is a property of a method: both are properties of the pair (method, GPU). The monocular study could state its hardware in one line — "Google Colab free tier, NVIDIA Tesla T4 (16 GB)" — and every number in it is relative to that machine. The multi-view study needs the same line, and it needs it to be true of **every** run.
+
+> If two methods are trained on two different GPUs, their training times cannot be compared, and the "quality per unit of cost" question that Protocol B exists to answer has no answer.
+
+There is no switch that can fix this after the fact: a run carries its wall-clock time and its peak VRAM, and nothing in the JSON records which card produced them. **Mixing GPU types means rerunning.**
+
+### What to weigh
+
+| Option | Argument for | Argument against |
+|---|---|---|
+| **T4** (16 GB) | the same card as the monocular study, so the two studies' cost columns are on one scale and can be discussed together | the slowest option, and the four multi-view methods are all heavier than the monocular three |
+| **L4** (24 GB) | a good balance of speed and price; comfortable headroom | multi-view times are not comparable with the monocular ones |
+| **A10G** (24 GB) | faster still | more expensive per hour; same incomparability |
+| **A100** (40/80 GB) | fastest | the monocular runs never exceeded 5.1 GB of VRAM, so the memory is wasted and the price is not |
+
+Memory is not the binding constraint here — time is. The real trade-off is between **continuity with the monocular study** (T4) and **finishing in reasonable wall-clock time** (anything newer).
+
+**Recommendation:** an L4, and state it plainly wherever the results are quoted. Continuity with the monocular study is attractive but partly illusory: the datasets, the resolutions and the window already differ, so the two studies' cost columns were never going to be directly comparable. Finishing the runs matters more.
+
+### Two operating rules that follow from it
+
+1. **One GPU type for the whole study**, including any rerun of a single scene.
+2. **One training run at a time on that GPU.** Peak VRAM is measured by polling `nvidia-smi` for the whole device, so a second process would be charged to the method under test.
+
 ## How to record the decision
 
 When one is taken, do all three of:
 
-1. set the knob in cell 0.1 of the affected notebook;
+1. set the knob in cell 0.1 of the affected notebook, or pass it on the command line as
+   `--set NAME=VALUE` (see [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md#step-8--the-three-open-decisions-and-what-they-change-in-the-commands));
 2. note the choice and the date in this file, replacing the entry's "not yet decided";
 3. if the choice differs from what [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4 and §6 describe, update those sections too — they state the current defaults as fact.
 
-Every choice is already recorded per run in the benchmark JSON (`budget_mode`, `num_frames`, `stg_model`), so a run always carries the decision it was made under, whatever this file says.
+Choices 1 to 3 are already recorded per run in the benchmark JSON (`budget_mode`, `num_frames`, `stg_model`), so a run always carries the decision it was made under, whatever this file says. **Choice 4 is not**: nothing in the JSON records which GPU produced a run, so it has to be written down here and repeated wherever the numbers are quoted.

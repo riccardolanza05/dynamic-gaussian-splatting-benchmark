@@ -19,6 +19,18 @@ results/n3dv/
 ```
 
 with the same `<run>/benchmark/benchmark_<protocol>.json` layout as the monocular study.
+
+**How the folder gets filled.** The notebooks do not write here directly: they write to the
+machine that has the GPU, and push each finished run to **one shared Google Drive folder**
+(`dgs-benchmark-n3dv` by default) that gathers the JSON of all four methods in exactly this
+layout. Bringing it here is one command on your own machine:
+
+```bash
+rclone copy gdrive:dgs-benchmark-n3dv results/n3dv --progress
+```
+
+The whole procedure, from renting a GPU to this point, is in
+[`docs/RUNNING_ON_LIGHTNING.md`](../../docs/RUNNING_ON_LIGHTNING.md).
 Run folders carry the frame window in their name — `<scene>_f50_iters30000` for Protocol A,
 `<scene>_f50_loss<target>` for Protocol B — so runs made with different windows cannot be
 mixed.

@@ -1,8 +1,8 @@
 # Dynamic Gaussian Splatting Benchmark
 
-A controlled, reproducible comparison of dynamic 3D Gaussian Splatting methods under one measurement protocol, run entirely on a free-tier Google Colab **Tesla T4**. Two studies share that protocol:
+A controlled, reproducible comparison of dynamic 3D Gaussian Splatting methods under one measurement protocol, on a single cloud GPU. Two studies share that protocol:
 
-* **Monocular study** — three methods on the eight scenes of the D-NeRF synthetic dataset. **Complete**: 46 evaluable runs, 1 177 evaluation points, results below.
+* **Monocular study** — three methods on the eight scenes of the D-NeRF synthetic dataset, on a free-tier Google Colab **Tesla T4**. **Complete**: 46 evaluable runs, 1 177 evaluation points, results below.
 * **Multi-view study** — four methods on the six scenes of *Neural 3D Video Synthesis from Multi-View Video* (N3DV). **Notebooks and protocol in place, no run made yet** ([jump](#multi-view-study-neural-3d-video)).
 
 ## Monocular study (D-NeRF)
@@ -66,7 +66,7 @@ Full discussion: [docs/RESULTS.md](docs/RESULTS.md).
 
 ```
 .
-├── notebooks/                      one self-contained Colab notebook per method and study
+├── notebooks/                      one self-contained notebook per method and study
 │   ├── 01-03                       monocular D-NeRF
 │   └── 04-07                       multi-view N3DV
 ├── docs/
@@ -74,10 +74,13 @@ Full discussion: [docs/RESULTS.md](docs/RESULTS.md).
 │   ├── METHODOLOGY_MULTIVIEW.md    multi-view: the same, plus what could and could not be equalised
 │   ├── OPEN_DECISIONS_MULTIVIEW.md three choices still open, with the cost of each alternative
 │   ├── DISCLOSURES_MULTIVIEW.md    what to be careful about when reading the multi-view results
+│   ├── RUNNING_ON_LIGHTNING.md     step-by-step: a cloud GPU, SSH, Google Drive, the commands
 │   ├── PROTOCOL_B_CALIBRATION.md   derivation of the per-scene L1 targets (both studies)
 │   ├── RESULTS.md                  results of both protocols and conclusions
 │   ├── REFERENCES.md               papers and BibTeX
 │   └── papers_comparison_table.pdf comparison of the five dynamic methods studied
+├── scripts/
+│   └── run_benchmark.py            run Part 1 of a notebook headlessly, over SSH
 └── results/
     ├── deformablegaussian/         raw benchmark JSON, one folder per run
     ├── 4dgaussian_output/          (<scene>_iters*/ = Protocol A, <scene>_loss*/ = Protocol B)
@@ -129,20 +132,31 @@ The monocular study covers only the three methods that accept single-camera inpu
 
 **Same analysis, same monitor.** The same ten metrics, the same two protocols, the same JSON schema and the same analysis pipeline. The core of the benchmark monitor is **byte-identical in the four notebooks** — it is delimited by explicit markers and the check is part of the test suite — and everything repository-specific lives in a glue block behind ten named functions. Two of the four repositories have no `training_report(...)` to wrap at all: their loops call a narrower per-iteration function, which the monitor wraps instead, reading the rest of the loop state from the calling frame.
 
-**Why 50 frames.** Spacetime Gaussians covers a sequence in 50-frame chunks by construction; Dynamic 3D Gaussians costs a fixed number of steps *per frame*, so 300 frames would be 608 000 steps; and one scene at full length is over 100 GB of extracted PNG. Fifty frames is the longest window in which all four methods fit on a free-tier T4, and it makes the test split exactly 50 views for every method. The price is that **no published N3DV number is comparable with these runs** — the papers all report the 300-frame sequence.
+**Why 50 frames.** Spacetime Gaussians covers a sequence in 50-frame chunks by construction; Dynamic 3D Gaussians costs a fixed number of steps *per frame*, so 300 frames would be 608 000 steps; and one scene at full length is over 100 GB of extracted PNG. Fifty frames is the longest window in which all four methods fit on a single rented GPU, and it makes the test split exactly 50 views for every method. The price is that **no published N3DV number is comparable with these runs** — the papers all report the 300-frame sequence.
 
-**Still to be decided.** Three choices are implemented with a default and a switch, and are not settled: the Protocol A budget of the frame-by-frame method, the length of the temporal window, and which of the two released Spacetime Gaussians models is benchmarked. Each is written up with its trade-off in [docs/OPEN_DECISIONS_MULTIVIEW.md](docs/OPEN_DECISIONS_MULTIVIEW.md). What needs no decision but does need care when reading the numbers — the LPIPS backend, the segmentation masks of notebook `04`, the size of the initial point cloud, and why Protocol B is not comparable for one method — is in [docs/DISCLOSURES_MULTIVIEW.md](docs/DISCLOSURES_MULTIVIEW.md).
+**Still to be decided.** Four choices are not settled: the Protocol A budget of the frame-by-frame method, the length of the temporal window, which of the two released Spacetime Gaussians models is benchmarked, and — the one that has to be taken before the first run — which GPU the whole study runs on, since training time and peak VRAM are two of the ten monitored metrics. Each is written up with its trade-off in [docs/OPEN_DECISIONS_MULTIVIEW.md](docs/OPEN_DECISIONS_MULTIVIEW.md). What needs no decision but does need care when reading the numbers — the LPIPS backend, the segmentation masks of notebook `04`, the size of the initial point cloud, and why Protocol B is not comparable for one method — is in [docs/DISCLOSURES_MULTIVIEW.md](docs/DISCLOSURES_MULTIVIEW.md).
 
 **Homogeneity.** Eight differences between the four methods were removed (evaluation resolution, test split, temporal window, initial point cloud, LPIPS backend, background convention, metric definitions, sampling schedule) and eight could only be declared (batch size, optimisation structure, model variant, environment map, per-frame initialisation, per-camera exposure, storage definitions, densification hyper-parameters). The full table, with the reason for each, is in [docs/METHODOLOGY_MULTIVIEW.md](docs/METHODOLOGY_MULTIVIEW.md) §4.
 
-**Status.** No multi-view training run has been made. `results/n3dv/` is empty, the Protocol B targets ship as `None` (they are derived from Protocol A results, which do not exist yet), and there is no multi-view results table. To run it: open a notebook in Colab, run Part 1 as for `01`–`03`, then
+**How to run it.** The notebooks detect where they are running — a [lightning.ai](https://lightning.ai) Studio, Google Colab, or any Linux machine with an NVIDIA GPU — and every setting can be passed from the command line, so a run can be launched and resumed over SSH with no browser:
+
+```bash
+python3 scripts/run_benchmark.py notebooks/05_4dgaussians_wu_n3dv.ipynb \
+    --set RUN_MODE=loop --set TRAINING_MODE=iterations
+```
+
+That executes Part 1 of the notebook (Part 2 renders and would compete for the GPU), trains the six scenes one after another, and copies each result to **one shared Google Drive folder** that gathers the JSON of all four methods in the layout the analysis pipeline reads. [**docs/RUNNING_ON_LIGHTNING.md**](docs/RUNNING_ON_LIGHTNING.md) is the full manual, from creating the machine to downloading the results, assuming no prior knowledge of SSH, tmux or rclone.
+
+Once the results are in `results/n3dv/`:
 
 ```bash
 cd results/analysis/scripts
 GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh
 ```
 
-which writes the multi-view tables, figures and dashboard under `results/n3dv/analysis/`, separately from the monocular ones.
+writes the multi-view tables, figures and dashboard under `results/n3dv/analysis/`, separately from the monocular ones.
+
+**Status.** No multi-view training run has been made yet: `results/n3dv/` is empty, the Protocol B targets ship as `None` (they are derived from Protocol A results, which do not exist yet), and there is no multi-view results table.
 
 ## Acknowledgements
 

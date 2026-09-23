@@ -6,7 +6,7 @@ The instrumentation, the metric definitions, the two protocols and the reporting
 
 Status: the notebooks and the protocol are in place; **no multi-view training run has been made yet**, so there are no results and the Protocol B targets are empty by construction. See §8.
 
-Two companion pages: [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) collects the three choices that are still open (the budget of the frame-by-frame method, the 50-frame window, and which Spacetime Gaussians model), each with what the alternative would cost; [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) collects what a reader of the results has to be careful about, and needs no decision.
+Three companion pages: [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md) is the step-by-step operating manual (get a GPU, reach it over SSH, send every result to one Google Drive folder, build the tables); [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) collects the three choices that are still open (the budget of the frame-by-frame method, the 50-frame window, and which Spacetime Gaussians model), each with what the alternative would cost; [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) collects what a reader of the results has to be careful about, and needs no decision.
 
 ## 1. Scope
 
@@ -25,7 +25,9 @@ Deformable-3DGS is left out: it targets single-camera scenes (NeRF-DS, HyperNeRF
 
 **Dataset.** N3DV, six scenes (`coffee_martini`, `cook_spinach`, `cut_roasted_beef`, `flame_salmon_1`, `flame_steak`, `sear_steak`), 21 synchronised cameras (fewer where the release filtered out unsynchronised streams), 300 frames at 30 fps, native 2704×2028.
 
-**Hardware.** Google Colab free tier, NVIDIA Tesla T4 (16 GB), as in the monocular study.
+**Hardware.** A single cloud GPU, on a [lightning.ai](https://lightning.ai) Studio. The monocular study ran on a Google Colab Tesla T4; the multi-view runs are not tied to that machine, and the notebooks work unchanged on a Studio, on Colab or on any Linux machine with an NVIDIA card (see [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md)).
+
+**Which GPU is itself a decision**, and it has to be taken before the first run: training time and peak VRAM are two of the ten monitored metrics, and both are properties of the pair (method, GPU). Every run of the study must therefore use the same GPU type, and that type must be reported next to the numbers. See [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §4.
 
 ## 2. The three conventions that make the comparison possible
 
