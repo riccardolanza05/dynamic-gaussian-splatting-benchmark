@@ -189,7 +189,7 @@ Spacetime Gaussians runs at 300 frames exactly as its paper does: **six independ
 * **Notebooks 05 and 06** need no change: the window is `NUM_FRAMES`, and a 300-frame run goes to its own folders (`<scene>_f300_…`).
 * **Notebook 07** trains the scene in blocks whenever `NUM_FRAMES` is above 50: six upstream runs (block *k* from `colmap_<50k>` with `--duration 50`), each with the monitor attached and its JSON under `<run>/blocks/block_<k>/`, then merged with the definitions above into the run's one benchmark JSON. An interrupted scene resumes at the first unfinished block; a run in Protocol B is refused. This is covered by the notebook checks (a 300-frame run with an interrupted block, the resume, the merge and its definitions, the refusal of Protocol B and of a window that is not a multiple of 50).
 * **Analysis:** `GS_STUDY=n3dv_full` builds the three-method, 300-frame study under `results/n3dv/analysis_f300/`, and `GS_STUDY=n3dv` keeps only the 50-frame runs. The two share the data folder and are told apart by the window each JSON records.
-* **Notebook 04 is not meant to be run at 300 frames**, and nothing stops it: do not pass `NUM_FRAMES=300` to it.
+* **Notebook 04 refuses a window longer than 50 frames**: cell 0.1 stops with an explanation, so Dynamic 3D Gaussians cannot be started on the full-length study by mistake.
 
 To launch it, pass `--set NUM_FRAMES=300 --set TRAINING_MODE=iterations` to `scripts/run_benchmark.py` for notebooks 05, 06 and 07.
 
