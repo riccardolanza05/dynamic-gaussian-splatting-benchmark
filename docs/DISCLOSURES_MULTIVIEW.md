@@ -13,6 +13,7 @@ Open questions that *do* need a decision are in [OPEN_DECISIONS_MULTIVIEW.md](OP
 | [5](#5-protocol-b-is-not-comparable-for-dynamic-3d-gaussians) | Protocol B truncates the sequence for Dynamic 3D Gaussians | the Protocol B table |
 | [6](#6-notebooks-0407-are-generated-not-hand-written) | Notebooks 04–07 are generated, 01–03 hand-written | reproducing the notebooks |
 | [7](#7-upstream-code-changed-in-two-notebooks) | Two notebooks patch upstream code, two do not | the "official code unchanged" claim |
+| [8](#8-corrections-made-before-the-first-run-2026-09-29) | Two errors corrected before the first run | notebook 05 batch size; the `ours_full` argument |
 
 ---
 
@@ -80,7 +81,7 @@ This is not a defect of the implementation; it is what "equal quality" means for
 
 **Why a generator.** The four multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property rather than a claim — along with the configuration, path-resolution, dataset, driver and reporting cells. Four hand-maintained copies of a 300-line monitor drift; a generator cannot.
 
-**What it guarantees.** The generator ships with a check suite (181 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the four**, that each glue block defines all ten hooks the core calls, that cells 0.1, 0.2 and 3 execute standalone, that a run from a different frame window is never silently reused, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
+**What it guarantees.** The generator ships with a check suite (246 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the four**, that each glue block defines all ten hooks the core calls, that cells 0.1, 0.2 and 3 execute standalone, that a run from a different frame window is never silently reused, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
 
 **What it does not guarantee.** Nothing requiring CUDA, COLMAP or the N3DV dataset was executed: the converters, the COLMAP invocations, the rasterizers and every `_render_pair` against a real model are **unverified by execution**. The notebooks are checked as structurally sound and consistent with one another, not as runnable end to end on Colab.
 
@@ -96,3 +97,14 @@ The project's rule is that each method runs its **official training code**, modi
 * **Notebook 04 (Dynamic 3D Gaussians)** patches **training-loop code**: the constant `10000 if is_initial_timestep else 2000` is made to read two environment variables defaulting to those values, so that the budget knob of [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §1 reaches the loop. It also replaces `helpers.o3d_knn` with a `scipy.spatial.cKDTree` implementation returning the same two arrays, because Open3D has no wheel for the Python version Colab ships, and adds a `train_one.py` launcher because `train.py`'s `__main__` hard-codes the six Panoptic Sports sequences.
 
 Everything else — losses and their weights, densification, learning rates, optimisers, stage handling, per-frame initialisation — is upstream in all four notebooks. The full list, with the reason for each, is in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §5.
+
+---
+
+## 8. Corrections made before the first run (2026-09-29)
+
+Both were found by re-reading the upstream repositories. No run had been made, so no result is affected.
+
+* **Notebook 05 forced `batch_size = 4` on every scene.** The official files `arguments/dynerf/{cook_spinach,cut_roasted_beef,flame_steak,sear_steak}.py` of 4DGaussians set `batch_size=2`, and only `coffee_martini` and `flame_salmon_1` inherit 4 from `default.py`. The derived `<scene>_run.py` overwrote that. This contradicted the rule both studies follow: the per-scene batch is part of a method's tuning and is kept, and declared through `images_seen` ([METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4.2 #1). The override is removed. The batch is now read back from the resolved official config, so `images_seen` and the `batch_size` field of the JSON carry the per-scene value, as notebook 06 already did.
+* **The claim that `ours_full` cannot save its decoder was wrong.** The earlier documents said that the released `save_ply()` of Spacetime Gaussians' `oursfull.py` has the decoder save commented out. The commented line is in `ourslite.py`, where there is no decoder to save. In `oursfull.py` the decoder has been written to `point_cloud.pt` since the first commit, and every `load_ply` variant reads it back. Notebook 07's storage report already counted `point_cloud.pt`, and its training renderer already applies the decoder, so `ours_full` works without any change to upstream code. The argument for `ours_lite` that remains is homogeneity alone ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §3).
+
+In the same pass, three settings of cell 0.1 that [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md) tells you to change with `--set` were plain literals, so the command line had no effect on them: `EXTRA_TRAIN_ARGS`, `STG_MODEL` (notebook 07) and `D3DG_BUDGET_MODE`, together with its three companion budget values (notebook 04). All of them now read `BENCH_<NAME>`, and the smoke tests check it. `ours_full` runs also get their own folders (`<scene>_f50_iters30000_full`), so switching the variant can never reuse or overwrite a `lite` run.

@@ -72,7 +72,7 @@ Full discussion: [docs/RESULTS.md](docs/RESULTS.md).
 ├── docs/
 │   ├── METHODOLOGY.md              monocular: instrumentation, aligned conventions, protocols
 │   ├── METHODOLOGY_MULTIVIEW.md    multi-view: the same, plus what could and could not be equalised
-│   ├── OPEN_DECISIONS_MULTIVIEW.md three choices still open, with the cost of each alternative
+│   ├── OPEN_DECISIONS_MULTIVIEW.md six choices still open, with the cost of each alternative
 │   ├── DISCLOSURES_MULTIVIEW.md    what to be careful about when reading the multi-view results
 │   ├── RUNNING_ON_LIGHTNING.md     step-by-step: a cloud GPU, SSH, Google Drive, the commands
 │   ├── PROTOCOL_B_CALIBRATION.md   derivation of the per-scene L1 targets (both studies)
