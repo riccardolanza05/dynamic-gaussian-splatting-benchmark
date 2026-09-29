@@ -60,7 +60,7 @@ Same rule, same parameters, four methods instead of three:
 
     target(scene) = 1.05 x max over methods ( minimum eval_l1_loss on the method's test curve )
 
-evaluated at 1352x1014 on the 50 views of the held-out camera `cam00`, over the first 50 frames of each scene, with LPIPS-VGG from the pip `lpips` backend, on a Tesla T4. The protocol parameters are those of the monocular study (`EVAL_EVERY_N_MINUTES = 0.5`, `MIN_ITERATIONS_BEFORE_STOP = 1000`, `TARGET_CONSECUTIVE_HITS = 2`, `TARGET_METRIC = "eval_loss"`, `EVAL_LOSS_KIND = "l1"`, `MAX_EVAL_VIEWS = 0`), and the figure to report is again the **first crossing**.
+evaluated at 1352x1014 on the 50 views of the held-out camera `cam00`, over the first 50 frames of each scene, with LPIPS-VGG from the pip `lpips` backend, on the single GPU type chosen for the whole study (see [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §4). The protocol parameters are those of the monocular study (`EVAL_EVERY_N_MINUTES = 0.5`, `MIN_ITERATIONS_BEFORE_STOP = 1000`, `TARGET_CONSECUTIVE_HITS = 2`, `TARGET_METRIC = "eval_loss"`, `EVAL_LOSS_KIND = "l1"`, `MAX_EVAL_VIEWS = 0`), and the figure to report is again the **first crossing**.
 
 ### Values
 
