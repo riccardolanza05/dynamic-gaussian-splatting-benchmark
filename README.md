@@ -160,10 +160,13 @@ Once the results are in `results/n3dv/`:
 
 ```bash
 cd results/analysis/scripts
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh        # 50 frames, four methods
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_full ./run_all.sh   # 300 frames, three methods
 ```
 
-writes the multi-view tables, figures and dashboard under `results/n3dv/analysis/`, separately from the monocular ones.
+writes the multi-view tables, figures and dashboard under `results/n3dv/analysis/` (and `analysis_f300/` for the full-length study), separately from the monocular ones.
+
+**Full-length study.** Notebooks `05`, `06` and `07` can also be run on all 300 frames (`--set NUM_FRAMES=300`), as their papers do, so that 4DGaussians, 4DGS native-4D and Spacetime Gaussians can be compared with the published numbers. Spacetime Gaussians is then trained as six 50-frame models per scene, as in its paper, and merged into one result. Dynamic 3D Gaussians is left out of this study (608 000 steps per scene). See [docs/OPEN_DECISIONS_MULTIVIEW.md](docs/OPEN_DECISIONS_MULTIVIEW.md) §2, option D.
 
 **Status.** No multi-view training run has been made yet: `results/n3dv/` is empty, the Protocol B targets ship as `None` (they are derived from Protocol A results, which do not exist yet), and there is no multi-view results table.
 

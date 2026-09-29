@@ -5,7 +5,14 @@ different methods), so every table that names methods or scenes lives here and i
 selected by the GS_STUDY environment variable:
 
     GS_STUDY=monocular   (default)  D-NeRF, three methods       -> results/
-    GS_STUDY=n3dv                   Neural 3D Video, four       -> results/n3dv/
+    GS_STUDY=n3dv                   Neural 3D Video, 50 frames,
+                                    four methods                -> results/n3dv/analysis/
+    GS_STUDY=n3dv_full              Neural 3D Video, 300 frames,
+                                    three methods               -> results/n3dv/analysis_f300/
+
+The two N3DV studies share one data root: their runs sit side by side in the same
+method folders, told apart by the frame window every benchmark JSON records
+(num_frames), and each study keeps only the runs of its own window (NUM_FRAMES).
 
 The data root is still GS_ROOT, exactly as before; the two variables are set
 together, e.g.
@@ -23,8 +30,13 @@ monocular and the multi-view figures is not asked to relearn the legend.
 import os
 
 STUDY = os.environ.get("GS_STUDY", "monocular").lower()
-if STUDY not in ("monocular", "n3dv"):
-    raise SystemExit("GS_STUDY must be 'monocular' or 'n3dv', not %r" % STUDY)
+if STUDY not in ("monocular", "n3dv", "n3dv_full"):
+    raise SystemExit("GS_STUDY must be 'monocular', 'n3dv' or 'n3dv_full', not %r" % STUDY)
+
+# Where under GS_ROOT the tables, figures and dashboard go, and which frame window the
+# runs must have been trained on (None: no filter, as in the monocular study).
+ANALYSIS_DIR = "analysis"
+NUM_FRAMES = None
 
 BLUE, ORANGE, AQUA, PURPLE = "#2a78d6", "#eb6834", "#1baf7a", "#cc79a7"
 
@@ -131,3 +143,27 @@ else:
     # 60 000 images is reached by all four at the end of Protocol A: the smallest
     # is Spacetime Gaussians at 30 000 steps x batch 2.
     IMG_BUDGET = 60000
+    NUM_FRAMES = 50
+
+if STUDY == "n3dv_full":
+    # The full-length study (docs/OPEN_DECISIONS_MULTIVIEW.md, decision 2, option D): the
+    # three methods that can be trained on all 300 frames, as their papers do. Dynamic 3D
+    # Gaussians is left out (608 000 steps per scene); Spacetime Gaussians is six 50-frame
+    # models per scene, merged by notebook 07 into one result per scene.
+    ANALYSIS_DIR = "analysis_f300"
+    NUM_FRAMES = 300
+    del METHOD_DIR["dynamic3dgaussians_output"]
+    del SHORT["Dynamic 3D Gaussians (Luiten et al.)"]
+    del C["Dynamic3DGS"]
+    del LABEL["Dynamic3DGS"]
+    ORDER = [m for m in ORDER if m != "Dynamic3DGS"]
+    CAVEAT = ("Multi-view study, full length: Neural 3D Video, all 300 frames of each scene, "
+              "cam00 held out (300 test views), 1352x1014, LPIPS-VGG. Spacetime Gaussians is "
+              "trained as six 50-frame models per scene, as in its paper: quality is the mean "
+              "over the 300 test views, time and storage the sum over the six, VRAM the maximum. "
+              "Dynamic 3D Gaussians is not part of this study.")
+    FAIRNOTE = "Aggregates are computed on the scenes completed by all three methods. "
+    RADARNOTE = "Each axis is min\u2013max normalised across the three methods; it shows ranking, not absolute values."
+    NMETHODS_WORD = "three"
+    MEANNOTE = ("Mean over the scenes completed by all three methods; "
+                "hollow markers are the individual scenes. ")

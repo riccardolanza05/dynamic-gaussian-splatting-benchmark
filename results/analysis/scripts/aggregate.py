@@ -1,18 +1,23 @@
-import json, os, glob
+import json, os, glob, re
 import pandas as pd, numpy as np
 
 ROOT = os.environ.get("GS_ROOT") or os.path.dirname(os.path.dirname(
            os.path.dirname(os.path.abspath(__file__))))
-OUT  = os.path.join(ROOT, "analysis")
-os.makedirs(os.path.join(OUT,"tables"), exist_ok=True)
+from study import METHOD_DIR, SHORT, STUDY, ANALYSIS_DIR, NUM_FRAMES
 
-from study import METHOD_DIR, SHORT, STUDY
+OUT  = os.path.join(ROOT, ANALYSIS_DIR)
+os.makedirs(os.path.join(OUT,"tables"), exist_ok=True)
 
 print("study: %s" % STUDY)
 
 rows_c, rows_r = [], []
 for mdir, mname in METHOD_DIR.items():
     for run in sorted(glob.glob(os.path.join(ROOT, mdir, "*"))):
+        # A run folder carries its window in its name (<scene>_f<frames>_...): skip the other
+        # study's runs before looking for a JSON, so they are not reported as missing either.
+        _w = re.search(r"_f(\d+)_", os.path.basename(run))
+        if NUM_FRAMES is not None and _w and int(_w.group(1)) != NUM_FRAMES:
+            continue
         b = os.path.join(run, "benchmark")
         jfs = [f for f in glob.glob(os.path.join(b, "benchmark_*.json")) if "config" not in os.path.basename(f)]
         runname = os.path.basename(run)
@@ -23,6 +28,9 @@ for mdir, mname in METHOD_DIR.items():
             continue
         d = json.load(open(jfs[0]))
         cfg = d.get("config", {})
+        # The two N3DV studies share the method folders: keep only this study's window.
+        if NUM_FRAMES is not None and (d.get("num_frames") or cfg.get("num_frames")) != NUM_FRAMES:
+            continue
         scene = d.get("scene") or cfg.get("scene")
         mode  = d.get("mode")  or cfg.get("mode")
         ents  = d.get("entries") or []
@@ -84,6 +92,12 @@ for mdir, mname in METHOD_DIR.items():
 
 curves = pd.DataFrame(rows_c)
 runs   = pd.DataFrame(rows_r)
+# A study with no Protocol B run (the 300-frame N3DV study has none by design) still gets
+# the first-crossing columns, empty, so the scripts downstream find the schema they expect.
+for _c in ["fc_iteration","fc_total_iterations","fc_training_time_s","fc_wall_time_s",
+           "fc_images_seen","fc_psnr","fc_ssim","fc_lpips","fc_eval_l1_loss","fc_num_gaussians"]:
+    if _c not in runs.columns:
+        runs[_c] = np.nan
 curves.to_csv(os.path.join(OUT,"tables","curves_all.csv"), index=False)
 runs.to_csv(os.path.join(OUT,"tables","runs_summary.csv"), index=False)
 print("curves", curves.shape, "runs", runs.shape)

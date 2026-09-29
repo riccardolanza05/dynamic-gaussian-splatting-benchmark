@@ -8,7 +8,8 @@ from matplotlib.patches import Patch
 
 ROOT = os.environ.get("GS_ROOT") or os.path.dirname(os.path.dirname(
            os.path.dirname(os.path.abspath(__file__))))
-OUT  = os.path.join(ROOT, "analysis")
+from study import ANALYSIS_DIR
+OUT  = os.path.join(ROOT, ANALYSIS_DIR)
 FIG  = os.path.join(OUT, "figures")
 TAB  = os.path.join(OUT, "tables")
 for d in (FIG, TAB): os.makedirs(d, exist_ok=True)

@@ -44,11 +44,15 @@ selected by `GS_STUDY`, while the data root is `GS_ROOT` as before:
 
 ```bash
 ./run_all.sh                                               # monocular (the default)
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh     # multi-view
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh       # multi-view, 50 frames
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_full ./run_all.sh  # multi-view, 300 frames
 ```
 
 Every output — tables, the 46 figures, `dashboard_data.json` and `benchmark_dashboard.html` —
-is written under `$GS_ROOT/analysis/`, so the two studies never overwrite each other.
+is written under `$GS_ROOT/analysis/` (`$GS_ROOT/analysis_f300/` for `n3dv_full`), so the
+studies never overwrite each other. The two N3DV studies read the same method folders and
+keep only the runs of their own window (`NUM_FRAMES` in `study.py`); `n3dv_full` has no
+Dynamic 3D Gaussians and no Protocol B runs.
 With `GS_STUDY` unset the pipeline behaves exactly as it did before `study.py` existed.
 
 ## Adding a new method or scene

@@ -184,7 +184,14 @@ Spacetime Gaussians runs at 300 frames exactly as its paper does: **six independ
 * **It needs new code in notebook 07**: training block *k* on frames 50k … 50k+49, and merging the six results into one benchmark entry per scene. Today the notebook trains only the first block. It also needs a small change in the analysis, which must not mix the 300-frame table with the 50-frame one.
 * Protocol B at 300 frames is not proposed: its targets would have to be recalibrated, and for Spacetime Gaussians "the first time the target is reached" is not defined across six separate models. The second study would be Protocol A only, read at each method's official budget (decision 6, option C).
 
-**Status:** the owner's current preference, not yet implemented. It subsumes option B.
+**Status:** the owner's current preference, and **implemented** (2026-09-29), not yet run. It subsumes option B.
+
+* **Notebooks 05 and 06** need no change: the window is `NUM_FRAMES`, and a 300-frame run goes to its own folders (`<scene>_f300_…`).
+* **Notebook 07** trains the scene in blocks whenever `NUM_FRAMES` is above 50: six upstream runs (block *k* from `colmap_<50k>` with `--duration 50`), each with the monitor attached and its JSON under `<run>/blocks/block_<k>/`, then merged with the definitions above into the run's one benchmark JSON. An interrupted scene resumes at the first unfinished block; a run in Protocol B is refused. This is covered by the notebook checks (a 300-frame run with an interrupted block, the resume, the merge and its definitions, the refusal of Protocol B and of a window that is not a multiple of 50).
+* **Analysis:** `GS_STUDY=n3dv_full` builds the three-method, 300-frame study under `results/n3dv/analysis_f300/`, and `GS_STUDY=n3dv` keeps only the 50-frame runs. The two share the data folder and are told apart by the window each JSON records.
+* **Notebook 04 is not meant to be run at 300 frames**, and nothing stops it: do not pass `NUM_FRAMES=300` to it.
+
+To launch it, pass `--set NUM_FRAMES=300 --set TRAINING_MODE=iterations` to `scripts/run_benchmark.py` for notebooks 05, 06 and 07.
 
 ### Option C — 300 frames for everyone
 

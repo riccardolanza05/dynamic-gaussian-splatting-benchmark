@@ -47,7 +47,7 @@ fig.tight_layout(); savefig(fig,"25_heatmap_iso_iterations", CAVEAT)
 fig, ax = plt.subplots(figsize=(12.4,3.2))
 M = np.array([[val(IT,m,s,"best_psnr") for s in SCENES] for m in ORDER])
 D = M - np.nanmax(M,axis=0, keepdims=True)
-im = ax.imshow(D, cmap=DIV, norm=TwoSlopeNorm(vmin=np.nanmin(D), vcenter=0, vmax=0.001), aspect="auto")
+im = ax.imshow(D, cmap=DIV, norm=TwoSlopeNorm(vmin=min(np.nanmin(D), -1e-6), vcenter=0, vmax=0.001), aspect="auto")
 for i in range(len(ORDER)):
     for j in range(len(SCENES)):
         v=D[i,j]

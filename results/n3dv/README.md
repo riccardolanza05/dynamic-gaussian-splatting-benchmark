@@ -39,8 +39,13 @@ To build the tables, figures and dashboard once the runs are here:
 
 ```bash
 cd results/analysis/scripts
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh        # 50 frames, four methods
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_full ./run_all.sh   # 300 frames, three methods
 ```
 
-Everything lands in `results/n3dv/analysis/`, leaving the monocular study untouched.
+Everything lands in `results/n3dv/analysis/` (and `results/n3dv/analysis_f300/` for the
+full-length study), leaving the monocular study untouched. Runs of both windows sit side by
+side in the same method folders; each study keeps only the runs of its own window.
+A Spacetime Gaussians run at 300 frames also has a `blocks/` folder with the JSON of each of
+its six 50-frame models; the analysis reads only the merged `benchmark/` JSON.
 The folder-to-label mapping is in `results/analysis/scripts/study.py`, in its `n3dv` branch.

@@ -135,6 +135,8 @@ Two deliberate config deviations, both recorded: `resolution: 1` instead of `2` 
 
 `script/pre_n3d.py` is called function by function — `preparecolmapdynerf`, `convertdynerftocolmapdb`, `getcolmapsinglen3d` are the repository's own, imported rather than copied — with one substitution: the frames come from cell 3 instead of being decoded again at full resolution by `extractframes`, and the intrinsics are divided by the same factor. No repository code is modified beyond the monitor hook. This is the slowest preparation of the four (`NUM_FRAMES` COLMAP runs on 21 images each); it is cached per scene and resumable.
 
+**Beyond 50 frames: one model per block, as the paper does.** For the full-length study (all 300 frames; [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §2, option D) the scene is trained as six independent 50-frame models, which is how the paper covers a 300-frame sequence. Block *k* is an ordinary upstream run on `colmap_<50k>` with `--duration 50`: the reader walks `colmap_<50k>` … `colmap_<50k+49>`, holds out `cam00` for those frames and rescales time to the block. Its monitor JSON is kept under `<run>/blocks/block_<k>/`. The merged result follows the paper's definitions where it has one: quality (PSNR, SSIM, LPIPS, L1) is the mean over the 300 test views, training time, images seen, Gaussians and storage are summed over the six models, and peak VRAM is their maximum. `iteration` stays the per-block step, and `total_iterations` is the sum. Protocol B is not run in blocks.
+
 ## 6. Iteration budget
 
 | Method | static warm-up | main optimisation | total | note |
