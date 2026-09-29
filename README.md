@@ -74,7 +74,6 @@ Full discussion: [docs/RESULTS.md](docs/RESULTS.md).
 │   ├── METHODOLOGY_MULTIVIEW.md    multi-view: the same, plus what could and could not be equalised
 │   ├── OPEN_DECISIONS_MULTIVIEW.md six choices still open, with the cost of each alternative
 │   ├── DISCLOSURES_MULTIVIEW.md    what to be careful about when reading the multi-view results
-│   ├── RUNNING_ON_LIGHTNING.md     step-by-step: a cloud GPU, SSH, Google Drive, the commands
 │   ├── PROTOCOL_B_CALIBRATION.md   derivation of the per-scene L1 targets (both studies)
 │   ├── RESULTS.md                  results of both protocols and conclusions
 │   ├── REFERENCES.md               papers and BibTeX
@@ -132,20 +131,30 @@ The monocular study covers only the three methods that accept single-camera inpu
 
 **Same analysis, same monitor.** The same ten metrics, the same two protocols, the same JSON schema and the same analysis pipeline. The core of the benchmark monitor is **byte-identical in the four notebooks** — it is delimited by explicit markers and the check is part of the test suite — and everything repository-specific lives in a glue block behind ten named functions. Two of the four repositories have no `training_report(...)` to wrap at all: their loops call a narrower per-iteration function, which the monitor wraps instead, reading the rest of the loop state from the calling frame.
 
-**Why 50 frames.** Spacetime Gaussians covers a sequence in 50-frame chunks by construction; Dynamic 3D Gaussians costs a fixed number of steps *per frame*, so 300 frames would be 608 000 steps; and one scene at full length is over 100 GB of extracted PNG. Fifty frames is the longest window in which all four methods fit on a single rented GPU, and it makes the test split exactly 50 views for every method. The price is that **no published N3DV number is comparable with these runs** — the papers all report the 300-frame sequence.
+**Why 50 frames.** Spacetime Gaussians covers a sequence in 50-frame chunks by construction; Dynamic 3D Gaussians costs a fixed number of steps *per frame*, so 300 frames would be 608 000 steps; and a full-length scene means six times as many extracted frames on disk. Fifty frames is the longest window in which all four methods fit on a single rented GPU, and it makes the test split exactly 50 views for every method. The price is that **no published N3DV number is comparable with these runs** — the papers all report the 300-frame sequence.
 
-**Still to be decided.** Four choices are not settled: the Protocol A budget of the frame-by-frame method, the length of the temporal window, which of the two released Spacetime Gaussians models is benchmarked, and — the one that has to be taken before the first run — which GPU the whole study runs on, since training time and peak VRAM are two of the ten monitored metrics. Each is written up with its trade-off in [docs/OPEN_DECISIONS_MULTIVIEW.md](docs/OPEN_DECISIONS_MULTIVIEW.md). What needs no decision but does need care when reading the numbers — the LPIPS backend, the segmentation masks of notebook `04`, the size of the initial point cloud, and why Protocol B is not comparable for one method — is in [docs/DISCLOSURES_MULTIVIEW.md](docs/DISCLOSURES_MULTIVIEW.md).
+**Still to be decided.** Six choices are not settled: the Protocol A budget and the N3DV configuration of the frame-by-frame method, the temporal window (and whether to add a 300-frame verification run against the papers), which of the two released Spacetime Gaussians models is benchmarked, the Protocol A budget of the other three, and which GPU the whole study runs on, since training time and peak VRAM are two of the ten monitored metrics. Each is written up with its trade-off and its sources in [docs/OPEN_DECISIONS_MULTIVIEW.md](docs/OPEN_DECISIONS_MULTIVIEW.md). What needs no decision but does need care when reading the numbers is in [docs/DISCLOSURES_MULTIVIEW.md](docs/DISCLOSURES_MULTIVIEW.md).
 
 **Homogeneity.** Eight differences between the four methods were removed (evaluation resolution, test split, temporal window, initial point cloud, LPIPS backend, background convention, metric definitions, sampling schedule) and eight could only be declared (batch size, optimisation structure, model variant, environment map, per-frame initialisation, per-camera exposure, storage definitions, densification hyper-parameters). The full table, with the reason for each, is in [docs/METHODOLOGY_MULTIVIEW.md](docs/METHODOLOGY_MULTIVIEW.md) §4.
 
-**How to run it.** The notebooks detect where they are running — a [lightning.ai](https://lightning.ai) Studio, Google Colab, or any Linux machine with an NVIDIA GPU — and every setting can be passed from the command line, so a run can be launched and resumed over SSH with no browser:
+### Running on a cloud GPU over SSH
+
+The notebooks detect where they are running — a [lightning.ai](https://lightning.ai) Studio, Google Colab, or any Linux machine with an NVIDIA GPU — and derive every path from one working directory. Every setting of cell 0.1 can be overridden with a `BENCH_<NAME>` environment variable, which `scripts/run_benchmark.py` sets from `--set NAME=VALUE`. A run can therefore be launched and resumed over SSH with no browser:
 
 ```bash
 python3 scripts/run_benchmark.py notebooks/05_4dgaussians_wu_n3dv.ipynb \
     --set RUN_MODE=loop --set TRAINING_MODE=iterations
 ```
 
-That executes Part 1 of the notebook (Part 2 renders and would compete for the GPU), trains the six scenes one after another, and copies each result to **one shared Google Drive folder** that gathers the JSON of all four methods in the layout the analysis pipeline reads. [**docs/RUNNING_ON_LIGHTNING.md**](docs/RUNNING_ON_LIGHTNING.md) is the full manual, from creating the machine to downloading the results, assuming no prior knowledge of SSH, tmux or rclone.
+That executes Part 1 of the notebook (Part 2 renders and would compete for the GPU), trains the scenes one after another, and saves the executed notebook under `logs/`. Each finished result is copied with `rclone` (remote `gdrive` by default) to **one shared Google Drive folder**, `dgs-benchmark-n3dv`, which gathers the JSON of all four methods in the layout the analysis pipeline reads. The loop is resumable: rerunning the same command skips the scenes that already finished.
+
+Rules that keep the measurements valid:
+
+* **one GPU type for the whole study**, and **one run at a time** on it, because training time and peak VRAM are measured metrics and peak VRAM is read for the whole device;
+* on a 16 GB GPU, Spacetime Gaussians needs `--set EXTRA_TRAIN_ARGS="--gtisint8 1"` (ground-truth images held on the GPU as 8-bit integers, lossless for PNG frames);
+* run notebook `05` first: it builds the COLMAP cache that `04` and `06` reuse;
+* use `tmux` (or similar) so that a run survives a dropped SSH connection;
+* start with a single scene (`--set RUN_MODE=single --set SCENE=sear_steak`) before any full loop.
 
 Once the results are in `results/n3dv/`:
 

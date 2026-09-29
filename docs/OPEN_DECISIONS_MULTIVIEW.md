@@ -9,7 +9,7 @@ Status of all six: **not yet decided.** Decisions 1, 3, 5 and 6 are a knob or an
 | # | Decision | Current default | Cost of changing later |
 |---|---|---|---|
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | `"native"` | one knob, rerun that notebook |
-| [2](#2-temporal-window-50-frames) | Temporal window | 50 frames | **everything must be rerun** |
+| [2](#2-temporal-window-50-frames) | Temporal window, and whether to add a 300-frame verification run | 50 frames, no verification run | main window: **everything must be rerun**; verification run: can be added at any time |
 | [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | `ours_lite` | one knob, rerun that notebook |
 | [4](#4-which-gpu) | Which GPU the whole study runs on | none — **must be chosen before the first run** | **everything must be rerun** |
 | [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | How Dynamic 3D Gaussians is configured on N3DV (masks, floor loss) | estimated masks + floor loss | code change + rerun notebook 04 |
@@ -101,53 +101,77 @@ Protocol B stops training as soon as the target quality is reached. For this met
 
 ## 2. Temporal window: 50 frames
 
-**Where:** cell 0.1 of all four notebooks, the variable `NUM_FRAMES`. **This is the most important decision**, because it invalidates every run made under the other value.
+**Where:** cell 0.1 of all four notebooks, the variable `NUM_FRAMES`.
 
-### Why 50 and not 300
+### What the window is
 
-Three constraints, each of which alone would force a shorter window on a single cloud GPU:
+Each N3DV scene is a **10-second video at 30 fps, i.e. 300 frames**, filmed by about 20 synchronised cameras, one of which (`cam00`) is never used for training and serves only as the test camera. The *window* is how many consecutive frames each method is asked to reconstruct: all 300 (the full 10 seconds), or the first 50 (1.67 seconds). The test is always `cam00` inside the window, so 50 or 300 test images.
 
-1. **Spacetime Gaussians works in blocks of 50 frames.** Every official N3DV config sets `duration: 50`. At 300 frames it becomes **six separate models per scene**: six trainings, six files. And there is no defined way to say "the PSNR of this method on this scene" or "its size in MB" — which of the six counts?
-2. **Dynamic 3D Gaussians pays per frame.** At 300 frames the native budget is 10 000 + 299 × 2 000 = **608 000 steps per scene**: on a rented GPU that is not a long run but an impractical one.
-3. **Disk.** One scene at 1352×1014, about 20 cameras × 50 frames, is already 15–20 GB of extracted PNG. 300 frames is six times that, on a runtime that also has to hold the model and the checkpoints.
+The window changes three things: **what the experiment costs**, **how hard the problem is**, and above all **what the results can be compared with**.
 
-Fifty is the longest window in which **all four** fit the same hardware, *and* in which Spacetime Gaussians uses **exactly one block**, so no method is penalised by chunking. It also makes the test split exactly 50 views for every method, which is what lets `MAX_EVAL_VIEWS` stay at `0` and keeps the evaluation L1 directly comparable, exactly as in the monocular study.
+### How each method reacts to a longer window
 
-### What 50 frames costs
+This is the crux, because the four methods react in very different ways.
 
-Every paper reports its N3DV numbers **on the 300 frames**. A 50-frame window is a different problem — usually an easier one, because there is less motion to represent — so our PSNR cannot sit next to theirs.
+* **4DGaussians (Wu) and 4DGS native-4D (Fudan)** build **one model for the whole window**, with a fixed number of steps (3 000 + 14 000 and 30 000 officially). A longer window **does not add steps**, but it changes two things:
+  * **each image is seen fewer times.** Wu's 14 000 main steps at 2–4 images per step see about 28 000–56 000 images. At 50 frames × ~20 cameras there are about 1 000 training images, each revisited on average **30–55 times**; at 300 frames about 6 000, each seen only **5–10 times**;
+  * **the same model capacity has to represent more motion.** Wu's deformation grid has a fixed size; Fudan's 4D Gaussians have to cover a longer time span, so it tends to need more of them, and each step becomes somewhat slower.
 
-In the monocular study that comparison was **the single most valuable check**: "our numbers agree with the published ones to within 0.37 dB", and it is what uncovered the background-convention issue ([METHODOLOGY.md](METHODOLOGY.md) §7). In the multi-view study at 50 frames that check **does not exist**. The results would be comparable *with each other* but not *with the outside world*: if the data preparation had a systematic error (COLMAP poses, split, resolution), nobody would see it.
+  For these two, 300 frames cost **about the same number of steps**, but are a **harder problem**.
+* **Spacetime Gaussians (Li)** is designed around **blocks of 50 frames** (`duration: 50` in every official config). To cover 300 frames its authors train **six independent models**, one per block, and report the **average** of the six. At 300 frames it costs six times as much, and the result is a set of six models, not one.
+* **Dynamic 3D Gaussians (Luiten)** walks the sequence **one frame at a time**, at a fixed cost per frame (2 000 steps after the first frame's 10 000). Its cost is proportional to the window: **108 000 steps at 50 frames, 608 000 at 300** — impractical on a rented GPU, times six scenes.
 
-### Option A — 50 frames only (implemented)
+And there is **disk**: 300 frames means extracting and holding six times as many images. One 1352×1014 PNG is roughly 2–3 MB, so 50 frames × ~20 cameras is on the order of **2–3 GB** per scene and 300 frames **13–18 GB**, before any per-method copies (Spacetime Gaussians, for instance, lays out one COLMAP folder per frame). An earlier version of this page said 15–20 GB for 50 frames; that figure looks overstated and is to be measured in the smoke test.
 
-**Pros:** four methods, one window, one protocol. The simplest and cheapest.
-**Cons:** no external validation. Every number has to carry the sentence "not comparable with the literature", which is already written into [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §2.3 and §8.
+**In short:** 50 frames is the longest window in which **all four** methods run on the same machine in reasonable time, and it is exactly one Spacetime Gaussians block, so no method is split into pieces.
 
-### Option B — 50 frames for all four, plus a 300-frame run of notebooks 05 and 06 only
+### Why 50 frames breaks comparability with the papers
 
-4DGaussians and 4DGS native-4D are the only two that can do 300 frames without exploding: both take the window from a configuration value, their cost does not grow per frame like Dynamic 3D Gaussians', and they do not split into blocks like Spacetime Gaussians.
+Every paper reports its N3DV results **on 300 frames**. Our PSNR at 50 frames and theirs at 300 measure different things, for three reasons:
 
-**Pros**
+1. **The test set is different**: 50 images of `cam00` for us, 300 for them. If the first 1.67 seconds of a scene are easier or harder than the rest (the flame of `flame_salmon` not yet lit, less motion), the average changes even for an identical method.
+2. **The problem is easier**: as above, at equal steps every image is revisited far more often and there is less motion to represent. PSNR **higher** than the papers' is expected — by how much is unknown.
+3. **For Spacetime Gaussians the comparison is nearly, but not quite, like for like**: our run is the first of the paper's six blocks; the paper reports the average of the six.
 
-* It buys back the literature check, for half of the methods. The write-up can say: *"at 300 frames our 4DGaussians matches the published value to within X dB, so the data preparation is sound; the 50-frame table below is then internally comparable"*.
-* Because **the data pipeline is shared by all four** (same COLMAP poses, same held-out camera, same resolution), this also gives confidence in the 50-frame numbers of Dynamic 3D Gaussians and Spacetime Gaussians.
+**What is lost in practice.** In the monocular study the comparison with the papers was the **quality check** ([METHODOLOGY.md](METHODOLOGY.md) §7): 40.64 dB against 41.01 published for Deformable-3DGS, and an anomalous gap on 4DGaussians that revealed the white/black background issue. Without it, an error **common to all methods** — camera poses converted wrongly, a wrong test split, a different resolution — would go unnoticed: every method would lose, say, 1–2 dB, the ranking could still look plausible, and nobody would see it. At 50 frames the results remain **comparable with each other**, since all four are under the same conditions, but not **verifiable from outside**.
 
-**Cons**
+### Option A — 50 frames for everyone (implemented)
 
-* Two more loops, six scenes each, at six times the frames: GPU time, and above all disk. `DELETE_FRAMES_AFTER_TRAIN` already frees each scene after its run, so it is feasible one scene at a time. The run folders separate cleanly (`_f300_` against `_f50_`) and `run_is_complete()` refuses to mix windows.
-* The 300-frame and 50-frame results **are not comparable with each other**: they are different experiments.
-* **Caveat — the validation run must use the papers' settings.** For the comparison with a paper to be a real check, the 300-frame run has to use **that paper's configuration** (its iteration count and its official N3DV config), not the uniform Protocol A budget of this study. Otherwise a PSNR gap cannot distinguish "the pipeline is wrong" from "the budget is different". 4DGaussians is the concrete case: its official N3DV schedule is 3 000 + 14 000 steps, while Protocol A runs it at 3 000 + 27 000 ([METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §6). This turns out to cost nothing extra: the learning-rate schedules are fixed in steps, so the official-budget model is already on the Protocol A curve (decision 6, option C). The official settings and what each paper averages over are in the [reference section](#what-the-papers-and-repositories-say-checked-2026-09-29). 4DGaussians gives per-scene values, so the check can be done scene by scene, as in the monocular study. 4DGS native-4D gives only the six-scene average.
+* **Pros:** one window, one protocol, minimum cost.
+* **Cons:** no external check. Every table has to state that the numbers are not comparable with the literature (already written into [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §2.3 and §8).
 
-### Option C — 300 frames for everything
+### Option B — 50 frames for everyone, plus a 300-frame verification run of Wu and Fudan only
 
-Not feasible for Dynamic 3D Gaussians on this hardware, and six models per scene for Spacetime Gaussians. It would mean dropping one or both methods, which is exactly what this extension exists to avoid.
+The main comparison table stays at 50 frames. The 300-frame run serves **only as a check**: our Wu and Fudan are compared with the numbers in their papers.
 
-### What to weigh
+* **Condition for it to be a real check:** the verification run has to be read **at each method's official budget** (Wu at 14 000 fine steps, Fudan at 30 000); otherwise a gap cannot say whether the pipeline or the budget is different. That reading is already on the Protocol A curve and costs no GPU time (decision 6, option C).
+* **What it actually verifies:**
+  * the **common** part: frame extraction, poses, `cam00` as the test camera, resolution, metric code;
+  * the **Wu- and Fudan-specific** part.
 
-Whether the study is allowed to have **no external validation at all**. Option A accepts that; option B buys it back for half the methods at the cost of two more loops.
+  It **does not verify** the preparation specific to the other two: Spacetime Gaussians runs its own per-frame COLMAP reconstruction, and Dynamic 3D Gaussians has its own conversion to the Panoptic format. For those two, confidence rises only partly. (An earlier version of this page was more optimistic on this point.)
+* **Wu allows a scene-by-scene check**, because its paper has a per-scene table (supplementary Table 6), as in the monocular study. Fudan reports only the six-scene average.
+* **Cost: less than it sounds.** Wu and Fudan take **the same number of steps** at 50 or 300 frames. The extra cost is mostly **disk and preparation** (extracting six times as many frames), plus a per-step slowdown of Fudan that has to be measured. `DELETE_FRAMES_AFTER_TRAIN` frees each scene after its run, so it can be done one scene at a time.
+* **Cons:** the 300-frame numbers must not be mixed with the 50-frame ones. They are a control experiment, not an extra column of the table.
 
-**Recommendation:** B, if the disk and the time are there. Otherwise A, with the limitation declared wherever a number is quoted.
+### Option B+ — as B, plus Spacetime Gaussians at 300 frames "as in the paper"
+
+Six 50-frame blocks, averaged as the paper does. It would work for STG too, but it costs **six times the whole STG loop** and needs new code: today the notebook trains only the first block. Listed for completeness; worth it only if B reveals problems.
+
+### Option C — 300 frames for everyone
+
+Not feasible: Dynamic 3D Gaussians becomes impractical and Spacetime Gaussians becomes six models. It would mean dropping one or two methods from the comparison.
+
+### When the decision has to be taken
+
+An earlier version of this page said this decision "has to be taken first and costs rerunning everything". More precisely:
+
+* **Only the window of the main table is irreversible.** If all runs are made at 50 frames and later the main comparison is wanted at 300, everything is rerun.
+* **The verification run of option B can be added at any time.** It invalidates nothing: it goes into separate folders (`_f300_`), and the notebooks refuse to mix windows (`run_is_complete()` checks `num_frames`).
+
+In practice: **50 or 300 for the main table must be chosen first**, and 50 is effectively forced if all four methods are to stay. **A or B can wait for the smoke test**, when the disk and time costs are known.
+
+**Recommendation:** 50 frames for the main table, and add B as soon as the smoke test confirms that disk and time allow it.
 
 ---
 
@@ -199,7 +223,7 @@ Do you want **the methods as their authors present them** (B), or **the methods 
 
 ## 4. Which GPU
 
-**Where:** not in the code at all — it is what you select when you start the machine. See [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md#which-gpu-to-choose--read-this-before-the-first-run).
+**Where:** not in the code at all — it is what you select when you start the machine. See also the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh).
 
 ### Why this is a decision and not a detail
 
@@ -353,7 +377,7 @@ The same runs as A, plus one analysis step: a second table that takes, for each 
 ## How the decisions interact
 
 * **1C, 2B, 3C and 5C all add GPU hours.** How many of them are affordable is exactly what the smoke test of decision 4 has to establish.
-* **The irreversible ones are 2 and 4.** 1, 3, 5 and 6 are a knob, one notebook to rerun, or an analysis step, and can be decided after the first results.
+* **The irreversible ones are the main window (2) and the GPU (4).** The 300-frame verification run of 2B, and decisions 1, 3, 5 and 6, are a knob, one notebook to rerun, extra runs in separate folders, or an analysis step, and can be decided after the first results.
 * **2B and 6C belong together.** The 300-frame validation run is only a real check if it is read at the official budget, and 6C is what provides that reading.
 
 Suggested combination if the budget allows it: **1 = native (+ aligned), 2 = 50 frames + the 300-frame run of 05 and 06, 3 = full (+ lite), 4 = L4 after a smoke test, 5 = the STG recipe, 6 = C.** Minimal but still defensible: **native, 50 frames, full, L4, STG recipe, 6C**, with the lack of a literature check at 50 frames declared.
@@ -407,7 +431,7 @@ Both are recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §8. T
 When one is taken, do all three of:
 
 1. set the knob in cell 0.1 of the affected notebook, or pass it on the command line as
-   `--set NAME=VALUE` (see [RUNNING_ON_LIGHTNING.md](RUNNING_ON_LIGHTNING.md#step-8--the-three-open-decisions-and-what-they-change-in-the-commands));
+   `--set NAME=VALUE` to `scripts/run_benchmark.py` (see the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh));
 2. note the choice and the date in this file, replacing the entry's "not yet decided";
 3. if the choice differs from what [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4 and §6 describe, update those sections too — they state the current defaults as fact.
 

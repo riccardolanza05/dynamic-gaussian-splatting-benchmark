@@ -29,8 +29,8 @@ layout. Bringing it here is one command on your own machine:
 rclone copy gdrive:dgs-benchmark-n3dv results/n3dv --progress
 ```
 
-The whole procedure, from renting a GPU to this point, is in
-[`docs/RUNNING_ON_LIGHTNING.md`](../../docs/RUNNING_ON_LIGHTNING.md).
+How the runs are launched is summarised in the
+[running notes of the main README](../../README.md#running-on-a-cloud-gpu-over-ssh).
 Run folders carry the frame window in their name — `<scene>_f50_iters30000` for Protocol A,
 `<scene>_f50_loss<target>` for Protocol B — so runs made with different windows cannot be
 mixed.
