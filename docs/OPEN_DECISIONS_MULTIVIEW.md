@@ -158,6 +158,34 @@ The main comparison table stays at 50 frames. The 300-frame run serves **only as
 
 Six 50-frame blocks, averaged as the paper does. It would work for STG too, but it costs **six times the whole STG loop** and needs new code: today the notebook trains only the first block. Listed for completeness; worth it only if B reveals problems.
 
+### Option D — a second, full-length study: 300 frames for the three methods that can do it
+
+Proposed by the study owner (2026-09-29). Two comparisons instead of one:
+
+* **short window, all four methods**: the main table of options A/B, 50 frames;
+* **full sequence, three methods**: 4DGaussians, 4DGS native-4D and Spacetime Gaussians on all 300 frames, **as their papers do**; Dynamic 3D Gaussians is left out, because at 300 frames it is impractical (608 000 steps per scene). Deformable-3DGS, the fifth studied method, is monocular only and is in neither table, so this is **three of the four multi-view methods**.
+
+Spacetime Gaussians runs at 300 frames exactly as its paper does: **six independent models of 50 frames**, one per block. The quantities then need a stated definition, the paper's where it has one:
+
+* **quality** (PSNR, SSIM, LPIPS, L1): the average over the 300 test images, i.e. over the six blocks, as the paper reports it;
+* **training time**: the sum of the six trainings;
+* **storage**: the sum of the six models;
+* **peak VRAM**: the maximum of the six.
+
+**Pros**
+
+* It is the literature check of option B, extended to Spacetime Gaussians: each of the three is directly comparable with its own paper, scene by scene for 4DGaussians.
+* It is a result in its own right: the three methods on the task as the field defines it, not only on a short window.
+* For 4DGaussians and 4DGS native-4D the cost in steps is the same as at 50 frames; the extra cost is disk and preparation.
+
+**Cons**
+
+* **Spacetime Gaussians costs six times its 50-frame loop**, and its preparation grows from 50 to 300 per-frame COLMAP reconstructions per scene (CPU time).
+* **It needs new code in notebook 07**: training block *k* on frames 50k … 50k+49, and merging the six results into one benchmark entry per scene. Today the notebook trains only the first block. It also needs a small change in the analysis, which must not mix the 300-frame table with the 50-frame one.
+* Protocol B at 300 frames is not proposed: its targets would have to be recalibrated, and for Spacetime Gaussians "the first time the target is reached" is not defined across six separate models. The second study would be Protocol A only, read at each method's official budget (decision 6, option C).
+
+**Status:** the owner's current preference, not yet implemented. It subsumes option B.
+
 ### Option C — 300 frames for everyone
 
 Not feasible: Dynamic 3D Gaussians becomes impractical and Spacetime Gaussians becomes six models. It would mean dropping one or two methods from the comparison.
@@ -387,7 +415,7 @@ Suggested combination if the budget allows it: **1 = native (+ aligned), 2 = 50 
 Recorded so the next steps follow it; each point may change with more information.
 
 1. **C** if the budget allows, otherwise **A**. Needs a GPU-hour estimate, from a smoke test.
-2. **B** if the budget allows, otherwise **A**. Same condition.
+2. **D** (a second study at 300 frames for 4DGaussians, 4DGS native-4D and Spacetime Gaussians, without Dynamic 3D Gaussians), otherwise **B**, otherwise **A**, depending on the budget.
 3. Preference for **`ours_full`**, provided it works as the paper specifies. It does: the decoder-save "bug" did not exist (see decision 3 and [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §8).
 4. To be decided after smoke tests and a budget/access discussion with the project's collaborators.
 
