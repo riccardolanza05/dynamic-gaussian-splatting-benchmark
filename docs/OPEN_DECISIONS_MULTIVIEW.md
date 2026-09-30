@@ -471,3 +471,67 @@ When one is taken, do all three of:
 3. if the choice differs from what [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4 and §6 describe, update those sections too — they state the current defaults as fact.
 
 Choices 1 to 3 are already recorded per run in the benchmark JSON (`budget_mode`, `num_frames`, `stg_model`), so a run always carries the decision it was made under, whatever this file says. **Choice 4 is not**: nothing in the JSON records which GPU produced a run, so it has to be written down here and repeated wherever the numbers are quoted.
+
+---
+
+## Under consideration: removing Dynamic 3D Gaussians from the comparison (2026-09-30)
+
+**Status: not decided.** Nothing has been removed: notebook 04 and decisions 1 and 5 stay as they are until the choice is taken. This section records why removing the method is being considered.
+
+### What the published numbers say
+
+The only published result of Dynamic 3D Gaussians on N3DV was made by the Spacetime Gaussians authors, on their own protocol: 300 frames, 1352×1014, `cam00` held out (Spacetime Gaussians paper, Appendix B, Table 6). That table is therefore a direct comparison between the two:
+
+| Method | PSNR ↑ | LPIPS ↓ | Model size | FPS ↑ |
+|---|---|---|---|---|
+| Dynamic 3D Gaussians | 30.67 | 0.099 | 2772 MB | 460 |
+| Spacetime Gaussians, lite | 31.59 | 0.047 | 103 MB | 310 |
+| Spacetime Gaussians, full | 32.05 | 0.044 | 200 MB | 140 |
+
+For context, the other two methods' own papers report, on the same resolution:
+* 4DGaussians: 31.15 dB, 0.049 LPIPS, 90 MB, 30 FPS (Table 3);
+* 4DGS native-4D: 32.01 dB, 0.055 LPIPS, 114 FPS (Table 1).
+
+These come from different papers, so the comparison with Dynamic 3D Gaussians is indicative rather than exact.
+
+What follows from the numbers:
+
+* **Last in quality on both metrics.**
+  * PSNR: 0.5–1.4 dB behind. Around 30 dB, 1 dB is roughly 26% more squared error.
+  * LPIPS, the metric closest to perceived quality: about **twice as bad** as all the others (0.099 against 0.044–0.055), the widest gap in the table.
+* **Model size out of scale.** 2.7 GB against 90–200 MB, i.e. 14–30 times larger, because it stores the position and rotation of every Gaussian for every frame. Model storage is one of the ten monitored metrics.
+* **The only column it wins is rendering speed** (460 FPS). This is also structural: each frame is a set of static 3D Gaussians, with no network or deformation to evaluate.
+* **That number already comes from a favourable, tuned configuration.** The STG authors report that the default hyper-parameters gave "subpar" quality on N3DV and had to be changed (Appendix E.1; issue [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81)). Without that tuning a lower result is expected.
+* **Uneven across scenes.** The per-scene values quoted by HiCoM (Table 6), from the same STG runs, are 32.97–33.68 dB on `cook_spinach`, `flame_steak` and `sear_steak`, but 26.49 on `coffee_martini` and 26.92 on `flame_salmon`.
+
+### Why: a tracking method, not a view-synthesis method
+
+The paper's title is *"Tracking by Persistent Dynamic View Synthesis"*: the goal is dense, physically consistent 3D tracking of every point. To get it, the method accepts constraints that cost image quality:
+* colour and size of each Gaussian are fixed over time;
+* rigidity losses tie neighbouring Gaussians together;
+* it depends on a foreground/background mask.
+
+This benchmark measures novel-view synthesis, not tracking. The method's strength would never be measured, while its costs would. Age does not explain the gap: it was published in August 2023, the other three between October and December 2023.
+
+### What keeping it costs
+
+It is the method behind decisions 1 and 5, and the reason the main window cannot be longer than 50 frames (decision 2):
+* 108 000 steps at 50 frames, 608 000 at 300;
+* no official N3DV configuration;
+* masks that N3DV does not provide, which must be either estimated by this project or taken from another group's recipe;
+* a Protocol B that is not comparable with the other methods (see [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §5);
+* a data conversion that is entirely this project's code and has never run on a GPU.
+
+### Assessment
+
+Removing it is defensible. On the only published evidence, the most likely outcome of keeping it is a method that ranks last in quality and in storage and first only in rendering speed, obtained through the most expensive and most project-specific part of the pipeline. The argument for keeping it is completeness, since it was one of the studied methods. That can be covered by stating in the methodology why it was excluded, with these numbers.
+
+**What the data cannot rule out:** with the STG recipe and the easier 50-frame window, it might come closer to the others on the simpler scenes. No available number suggests it would overtake them in quality.
+
+**If it is removed:**
+* the main comparison becomes the same three methods as the full-length study;
+* decisions 1 and 5 lapse;
+* notebook 04 and its analysis entries are taken off the branch (possibly kept locally);
+* the methodology gains a paragraph explaining the exclusion.
+
+Sources: [Spacetime Gaussians, arXiv 2312.16812](https://arxiv.org/abs/2312.16812) (App. B Table 6, App. E.1); [4DGaussians, arXiv 2310.08528](https://arxiv.org/abs/2310.08528) (Table 3); [4DGS native-4D, arXiv 2310.10642](https://arxiv.org/abs/2310.10642) (Table 1); [Dynamic 3D Gaussians, arXiv 2308.09713](https://arxiv.org/abs/2308.09713) and its [README](https://github.com/JonathonLuiten/Dynamic3DGaussians); [HiCoM, arXiv 2411.07541](https://arxiv.org/abs/2411.07541) (Table 6).
