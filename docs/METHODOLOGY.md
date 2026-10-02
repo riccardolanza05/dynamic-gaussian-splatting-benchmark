@@ -16,7 +16,7 @@ This document describes how the benchmark was built: which methods were compared
 | 4DGaussians / HexPlane (Wu et al., CVPR 2024) | [`hustvl/4DGaussians`](https://github.com/hustvl/4DGaussians) | canonical space + factorised HexPlane grid + light decoder |
 | 4DGS with native 4D primitives (Yang et al., ICLR 2024) | [`fudan-zvg/4d-gaussian-splatting`](https://github.com/fudan-zvg/4d-gaussian-splatting) | native 4D Gaussians with finite temporal extent |
 
-Not benchmarked **here**: Dynamic 3D Gaussians (Luiten et al.) and Spacetime Gaussian Feature Splatting (Li et al.), which both require multi-view input by construction. They are benchmarked in the multi-view study, on Neural 3D Video: see [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) and notebooks `04` and `07`. Both were also studied as part of the literature review ([REFERENCES.md](REFERENCES.md), [papers_comparison_table.pdf](papers_comparison_table.pdf)).
+Not benchmarked **here**: Dynamic 3D Gaussians (Luiten et al.) and Spacetime Gaussian Feature Splatting (Li et al.), which both require multi-view input by construction. Spacetime Gaussians is benchmarked in the multi-view study, on Neural 3D Video (notebook `07`); Dynamic 3D Gaussians was part of that study and was set aside before any run, for the reasons given in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §1.1. Both were also studied as part of the literature review ([REFERENCES.md](REFERENCES.md), [papers_comparison_table.pdf](papers_comparison_table.pdf)).
 
 **Dataset.** D-NeRF synthetic, monocular, 8 scenes (`bouncingballs`, `hellwarrior`, `hook`, `jumpingjacks`, `lego`, `mutant`, `standup`, `trex`), native 800×800 RGBA images, 20 test views per scene.
 

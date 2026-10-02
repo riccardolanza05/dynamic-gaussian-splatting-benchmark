@@ -75,13 +75,14 @@ To add a method or a scene to **this** (monocular) study:
 
 ## 8. The multi-view study
 
-The benchmark has been extended to the **multi-view** setting — *Neural 3D Video Synthesis from Multi-View Video* (N3DV), four methods, notebooks [`04`](../notebooks/04_dynamic3dgaussians_luiten_n3dv.ipynb)–[`07`](../notebooks/07_spacetime_gaussians_li_n3dv.ipynb) — with the same monitor, the same metrics and the same two protocols. Its conventions, and the full list of the differences between the four methods that could be equalised and of those that could only be declared, are in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md).
+The benchmark has been extended to the **multi-view** setting — *Neural 3D Video Synthesis from Multi-View Video* (N3DV), three methods, notebooks [`05`](../notebooks/05_4dgaussians_wu_n3dv.ipynb)–[`07`](../notebooks/07_spacetime_gaussians_li_n3dv.ipynb) — with the same monitor, the same metrics and the same Protocol B; its Protocol A runs each method at its official budget and not at a common one. Its conventions, and the full list of the differences between the methods that could be equalised and of those that could only be declared, are in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md).
 
-**No multi-view run has been made yet**, so there are no multi-view numbers on this page and `results/n3dv/` is empty. The two studies are reported separately — different dataset, different scenes, partly different methods, and a 50-frame window that makes no published N3DV number comparable — and the analysis pipeline keeps them apart through `GS_STUDY`:
+**No multi-view run has been made yet**, so there are no multi-view numbers on this page and `results/n3dv/` is empty. The two studies are reported separately — different dataset, different scenes, partly different methods, a different Protocol A — and the analysis pipeline keeps them apart through `GS_STUDY`:
 
 ```bash
 cd results/analysis/scripts
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh        # main study, 300 frames
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_f50 ./run_all.sh    # secondary study, 50 frames
 ```
 
-which writes its own tables, figures and dashboard under `results/n3dv/analysis/` without touching anything on this page.
+which write their own tables, figures and dashboard under `results/n3dv/analysis/` and `results/n3dv/analysis_f50/` without touching anything on this page.

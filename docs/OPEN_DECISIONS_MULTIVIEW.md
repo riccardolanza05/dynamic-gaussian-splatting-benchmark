@@ -1,272 +1,157 @@
 # Open decisions, multi-view study
 
-Six choices in the multi-view extension are **judgement calls, not facts**. Five are implemented with a default, or need no code at all, so they do not block a run. The GPU has no default, because it is chosen when the machine is started. Each changes what the resulting numbers mean, and the defaults were chosen by the person who wrote the notebooks, not by the person who owns the study.
+The multi-view extension rests on a number of **judgement calls, not facts**. This page lists them: what was decided and why, what is still open, and what each alternative would cost. Each entry says what is implemented today, so that a decision is taken with the trade-off in view and not discovered when the tables are already built.
 
-This page exists so the decision can be taken later, with the trade-off in front of you, rather than discovered when the tables are already built. It starts with a short refresher on what the study measures and how the four methods differ, because every decision below follows from those differences. Each entry then says what is implemented today, what the alternatives are, what each one costs, and what the resulting number would mean. A [reference section](#what-the-papers-and-repositories-say-checked-2026-09-29) at the end collects the facts the entries rely on, each with its source.
+The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02, two lapsed on the same day because the method they concerned was set aside, and four are open.
 
-Status of all six: **not yet decided.** Decisions 1, 3, 5 and 6 are a knob or an analysis step, and cost at most one notebook to rerun, so they can even be taken after the first results. **Decisions 2 and 4 are expensive to change afterwards — changing either means rerunning everything — so read those first.**
-
-| # | Decision | Current default | Cost of changing later |
+| # | Decision | Status | Implemented today |
 |---|---|---|---|
-| [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | `"native"` | one knob, rerun that notebook |
-| [2](#2-temporal-window-50-frames) | Temporal window, and whether to add a 300-frame verification run | 50 frames, no verification run | main window: **everything must be rerun**; verification run: can be added at any time |
-| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | `ours_lite` | one knob, rerun that notebook |
-| [4](#4-which-gpu) | Which GPU the whole study runs on | none — **must be chosen before the first run** | **everything must be rerun** |
-| [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | How Dynamic 3D Gaussians is configured on N3DV (masks, floor loss) | estimated masks + floor loss | code change + rerun notebook 04 |
-| [6](#6-the-protocol-a-budget-of-30-000-steps) | The Protocol A budget, and whether to also read results at each method's official budget | 30 000 uniform, no official readout | none for the readout (analysis only) |
+| [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | **lapsed** (method set aside, 2026-10-02) | — |
+| [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study, 50 frames the secondary one | `NUM_FRAMES = 300` by default, `--set NUM_FRAMES=50` for the short window |
+| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-02**: both, as two rows; `ours_lite` alone if both cost too much. The threshold is open | `ours_lite` by default, `--set STG_MODEL=ours_full` for the second row |
+| [4](#4-which-gpu) | Which GPU the whole study runs on | **open** — must be chosen before the first run | nothing: it is chosen when the machine is started |
+| [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | Configuration of Dynamic 3D Gaussians on N3DV | **lapsed** (method set aside, 2026-10-02) | — |
+| [6](#6-the-protocol-a-budget) | Protocol A budget | **decided 2026-10-02**: each method at its official N3DV budget | 3 000 + 14 000 for 4DGaussians, 30 000 for the other two |
+| [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **open** — to be taken after the Protocol A runs | Protocol B runs on the 50-frame window only |
+| [8](#8-a-temporally-subsampled-window) | A temporally subsampled window (one frame in six) | **open** — to be taken after the smoke test | not implemented |
+| [9](#9-lpips-backend) | LPIPS backend, now that its original reason is gone | **open**, low stakes | the pip `lpips` package in all three notebooks |
+
+**Irreversible ones.** Changing the GPU (4) or the main window (2) after the runs means rerunning everything. The others are a knob, one notebook to rerun, extra runs in separate folders, or an analysis step.
 
 ---
 
-## Refresher: what is measured, and how the four methods differ
+## Refresher: what is measured, and how the three methods differ
 
 ### The two protocols
 
-Every method is scored on two axes: **quality** (PSNR, SSIM, LPIPS and L1 on the held-out views) and **cost** (training time, peak VRAM, model size on disk, rendering speed). The two protocols of the monocular study are kept unchanged:
+Every method is scored on two axes: **quality** (PSNR, SSIM, LPIPS and L1 on the held-out views) and **cost** (training time, peak VRAM, model size on disk).
 
-* **Protocol A — fixed budget.** Every method trains for the same number of optimisation steps and the quality it reaches is compared. It answers *"for the same effort, which method reconstructs best?"*.
+* **Protocol A — official budget.** Every method trains for the number of optimisation steps its authors use on this dataset, and the quality it reaches is compared with what it cost. It answers *"run as its authors run it, how well does each method reconstruct, and at what cost?"*. Until 2026-10-02 Protocol A gave every method the same 30 000 steps, as in the monocular study; see decision 6.
 * **Protocol B — fixed quality.** Every method trains until its test L1 drops below a per-scene target, and what it cost to get there is compared. It answers *"what does this quality cost?"*. The targets are derived from the Protocol A results, so Protocol B always runs after Protocol A.
 
 ### The dataset
 
-**N3DV** (*Neural 3D Video*): about 20 fixed, synchronised cameras film a kitchen with a person moving in it (cooking, a flame, a salmon…). Each scene is 300 frames, 10 seconds at 30 fps. Camera `cam00` is held out for testing.
+**N3DV** (*Neural 3D Video*): about 20 fixed, synchronised cameras film a kitchen with a person moving in it. Each scene is 300 frames, 10 seconds at 30 fps. Camera `cam00` is held out for testing, as the dataset's own README states.
 
-### The four methods, in one line each
+### The three methods, in one line each
 
 | Method | How it represents motion | Consequence for this page |
 |---|---|---|
 | **4DGaussians (Wu)**, notebook 05 | One set of "canonical" 3D Gaussians plus a small network (HexPlane grid + MLP) that, given a time *t*, says how much to move, rotate and scale each Gaussian. | **One model for the whole sequence.** |
 | **4DGS native-4D (Fudan)**, notebook 06 | The Gaussians are four-dimensional: they have an extent in time too. Rendering instant *t* means "slicing" each 4D Gaussian into a 3D one. | **One model for the whole sequence.** |
-| **Spacetime Gaussians (Li)**, notebook 07 | Each Gaussian has an opacity that rises and fades over time (a bell curve in time) and a polynomial trajectory. | One model, but **by construction it covers a block of 50 frames** — the root of decision 2. |
-| **Dynamic 3D Gaussians (Luiten)**, notebook 04 | Reconstructs the first frame well, then **walks the sequence one frame at a time**: each new frame starts from the Gaussians of the previous one and optimises only their position and rotation, under "physical" constraints (local rigidity, isometry) that make them behave like solid objects. Colour and size stay fixed. It is **tracking**, not one model optimised all at once. | Its cost is spent **per frame** — the root of decision 1. |
+| **Spacetime Gaussians (Li)**, notebook 07 | Each Gaussian has an opacity that rises and fades over time and a polynomial trajectory. | One model, but **by construction it covers a block of 50 frames**: a 300-frame scene is six models. |
+
+A fourth method, **Dynamic 3D Gaussians (Luiten)**, was part of the study until 2026-10-02. Why it was set aside is in [its own section](#dynamic-3d-gaussians-set-aside-2026-10-02).
 
 ---
 
-## 1. Iteration budget of Dynamic 3D Gaussians
+## 2. Temporal window
 
-**Where:** cell 0.1 of [`notebooks/04_dynamic3dgaussians_luiten_n3dv.ipynb`](../notebooks/04_dynamic3dgaussians_luiten_n3dv.ipynb), the variable `D3DG_BUDGET_MODE`.
+**Where:** cell 0.1 of the three notebooks, the variable `NUM_FRAMES`.
 
-### The problem
-
-For notebooks 05, 06 and 07, "30 000 steps" means the same thing: 30 000 updates of a single model that sees the whole window. Dynamic 3D Gaussians spends its steps **per frame** instead. Its authors use 10 000 steps on the first frame (building the scene from scratch) and 2 000 on each later one (following the motion). Its total is therefore a *function of the window*, not a number anyone chose:
-
-```
-total = ITERS_FIRST + ITERS_PER_TIMESTEP × (NUM_FRAMES − 1)
-      = 10 000 + 2 000 × 49 = 108 000   (at 50 frames)
-```
-
-That is 3.6× the budget of the other three. It is not a choice of ours: it is the shape of the algorithm. No setting of that method both equals 30 000 total steps and leaves its per-frame budget alone.
-
-### Option A — `"native"`, 108 000 steps (implemented)
-
-`D3DG_ITERS_FIRST = 10000`, `D3DG_ITERS_PER_TIMESTEP = 2000`: the authors' schedule, unchanged.
-
-**Pros**
-
-* It measures the method **as its authors designed it**. Whether it does well or badly, that is to its credit or blame, not to a wrong budget.
-* It follows the precedent of the monocular study. There, 4DGS native-4D used a different batch per scene (1 to 24 images per step) and it was not forced to a common value: the difference was declared and analysed on the `images_seen` axis (see [METHODOLOGY.md](METHODOLOGY.md) §3.5 and [RESULTS.md](RESULTS.md) §4). The same argument applies here, more strongly: the per-frame budget is not a tuning knob but the shape of the algorithm.
-
-**Cons**
-
-* In the Protocol A table the "steps" column is no longer equal for everyone: 108 000 against 30 000. A hurried reader may conclude that this method "was given more resources". In part that is true, and it has to be written next to the number.
-* It is **by far the longest run** of the four notebooks: 3.6× the steps of the others, for six scenes, and the one whose cost is most sensitive to decision 4. The loop is resumable per scene, but not mid-scene.
-
-### Option B — `"aligned"`, 30 000 steps in total
-
-`D3DG_BUDGET_MODE = "aligned"` keeps the first frame at 10 000 and divides the remaining `ALIGNED_TOTAL_ITERATIONS − 10 000` equally over the later frames: at 30 000 total and 50 frames, **about 408 steps per frame instead of 2 000** — a fifth.
-
-**Pros**
-
-* The Protocol A table is literally clean: 30 000 steps for everyone, so "at equal steps, which reconstructs best?" has a literal answer.
-* Much less GPU time.
-
-**Cons**
-
-* 408 steps per frame are probably too few for the tracking to settle. The Gaussians lag behind the real motion, and the error **accumulates**, because every frame starts from the previous one; the persistence losses (rigidity, rotation, isometry, background anchoring) have that much less opportunity to act before the window moves on.
-* The resulting number says more "a starved Dynamic 3D Gaussians" than "Dynamic 3D Gaussians". It is very likely a floor, not a measurement of the method, and risks concluding that the method is poor when it was simply run outside its design point.
-
-### Option C — both
-
-The knob makes this cheap in code and expensive in GPU time: one extra full loop of notebook 04. The run folders already carry the budget in their name (`<scene>_f50_iters108000` against `<scene>_f50_iters30000`), so the two coexist without collision, and `budget_mode` is recorded in every benchmark JSON. In the tables, *native* is the headline result and *aligned* a footnote ("at strictly equal steps, the method drops to X dB").
-
-**Pros:** the most defensible outcome — it answers both questions.
-**Cons:** one more complete run of notebook 04, which is already the longest.
-
-### A note on Protocol B, whatever the option
-
-Protocol B stops training as soon as the target quality is reached. For this method stopping early does not mean "a less refined model", it means **"a truncated sequence"**: say 30 frames out of 50 reconstructed, and the rest does not exist. For this method Protocol B answers a different question, and Protocol A remains the primary comparison (see [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §5). None of the three options changes that.
-
-**Recommendation:** A as the baseline, C if the GPU time allows it. B alone, no.
-
----
-
-## 2. Temporal window: 50 frames
-
-**Where:** cell 0.1 of all four notebooks, the variable `NUM_FRAMES`.
+**Decided 2026-10-02: the main study uses all 300 frames; a secondary study uses the first 50.**
 
 ### What the window is
 
-Each N3DV scene is a **10-second video at 30 fps, i.e. 300 frames**, filmed by about 20 synchronised cameras, one of which (`cam00`) is never used for training and serves only as the test camera. The *window* is how many consecutive frames each method is asked to reconstruct: all 300 (the full 10 seconds), or the first 50 (1.67 seconds). The test is always `cam00` inside the window, so 50 or 300 test images.
+Each scene is a 10-second video at 30 fps, 300 frames. The *window* is how many consecutive frames each method reconstructs. The test is always `cam00` inside the window: 300 test images, or 50.
 
-The window changes three things: **what the experiment costs**, **how hard the problem is**, and above all **what the results can be compared with**.
+### Why 300 is now the main window
 
-### How each method reacts to a longer window
+Until 2026-10-02 the main window was 50 frames, for one reason: Dynamic 3D Gaussians costs a fixed number of steps *per frame* (108 000 steps at 50 frames, 608 000 at 300), so 50 was the longest window in which four methods fitted on one rented GPU. With that method set aside, the constraint is gone, and all three remaining methods run on 300 frames, which is what their papers report:
 
-This is the crux, because the four methods react in very different ways.
+| Method | Published N3DV result, 300 frames, 1352×1014 | Source |
+|---|---|---|
+| 4DGaussians | 31.15 dB PSNR, 0.049 LPIPS | its paper, Table 3; per scene in its appendix, Table 6 |
+| 4DGS native-4D | 32.01 dB PSNR, 0.055 LPIPS | its paper, Table 1 (average only) |
+| Spacetime Gaussians, full | 32.05 dB PSNR, 0.044 LPIPS | its paper, Appendix B, Table 6 |
+| Spacetime Gaussians, lite | 31.59 dB PSNR, 0.047 LPIPS | same table |
 
-* **4DGaussians (Wu) and 4DGS native-4D (Fudan)** build **one model for the whole window**, with a fixed number of steps (3 000 + 14 000 and 30 000 officially). A longer window **does not add steps**, but it changes two things:
-  * **each image is seen fewer times.** Wu's 14 000 main steps at 2–4 images per step see about 28 000–56 000 images. At 50 frames × ~20 cameras there are about 1 000 training images, each revisited on average **30–55 times**; at 300 frames about 6 000, each seen only **5–10 times**;
-  * **the same model capacity has to represent more motion.** Wu's deformation grid has a fixed size; Fudan's 4D Gaussians have to cover a longer time span, so it tends to need more of them, and each step becomes somewhat slower.
+**What 300 frames buys.** The comparison with the papers, which the 50-frame window did not allow. In the monocular study that comparison was the quality check ([METHODOLOGY.md](METHODOLOGY.md) §7): it is what revealed the white/black background issue. An error common to all methods — poses converted wrongly, a wrong test split, a different resolution — moves every method by a similar amount, leaves the ranking plausible, and is visible only against an external number.
 
-  For these two, 300 frames cost **about the same number of steps**, but are a **harder problem**.
-* **Spacetime Gaussians (Li)** is designed around **blocks of 50 frames** (`duration: 50` in every official config). To cover 300 frames its authors train **six independent models**, one per block, and report the **average** of the six. At 300 frames it costs six times as much, and the result is a set of six models, not one.
-* **Dynamic 3D Gaussians (Luiten)** walks the sequence **one frame at a time**, at a fixed cost per frame (2 000 steps after the first frame's 10 000). Its cost is proportional to the window: **108 000 steps at 50 frames, 608 000 at 300** — impractical on a rented GPU, times six scenes.
+**What 300 frames costs.**
 
-And there is **disk**: 300 frames means extracting and holding six times as many images. One 1352×1014 PNG is roughly 2–3 MB, so 50 frames × ~20 cameras is on the order of **2–3 GB** per scene and 300 frames **13–18 GB**, before any per-method copies (Spacetime Gaussians, for instance, lays out one COLMAP folder per frame). An earlier version of this page said 15–20 GB for 50 frames; that figure looks overstated and is to be measured in the smoke test.
+* **4DGaussians and 4DGS native-4D**: the same number of steps as at 50 frames, since each builds one model for the window. What grows is the data: six times the frames to extract and to load, and each evaluation renders 300 test views instead of 50.
+* **Spacetime Gaussians**: six times the training (six independent 50-frame models per scene, as in its paper) and 300 per-frame COLMAP reconstructions per scene instead of 50. It is the method that dominates the budget; see decision 3.
+* **Disk**: estimated 13–18 GB of extracted frames per scene (2–3 MB per PNG, about 20 cameras, 300 frames), against 2–3 GB at 50 frames. An estimate; the runs record the real figure (`scene_data_mb`).
 
-**In short:** 50 frames is the longest window in which **all four** methods run on the same machine in reasonable time, and it is exactly one Spacetime Gaussians block, so no method is split into pieces.
+### What the 50-frame study is for
 
-### Why 50 frames breaks comparability with the papers
+It is kept as the secondary study, with the same three methods, for two reasons:
 
-Every paper reports its N3DV results **on 300 frames**. Our PSNR at 50 frames and theirs at 300 measure different things, for three reasons:
+* **Protocol B runs there.** At 300 frames Protocol B is not defined for Spacetime Gaussians, which is six separate models (decision 7).
+* **It is cheap**, and it is the first thing a smoke test exercises.
 
-1. **The test set is different**: 50 images of `cam00` for us, 300 for them. If the first 1.67 seconds of a scene are easier or harder than the rest (the flame of `flame_salmon` not yet lit, less motion), the average changes even for an identical method.
-2. **The problem is easier**: as above, at equal steps every image is revisited far more often and there is less motion to represent. PSNR **higher** than the papers' is expected — by how much is unknown.
-3. **For Spacetime Gaussians the comparison is nearly, but not quite, like for like**: our run is the first of the paper's six blocks; the paper reports the average of the six.
+Its limits: no published number is comparable with it, and the first 1.67 seconds of a scene may not be representative of the whole (the flame of `flame_salmon_1`, for instance). Decision 8 is a proposal that addresses the second point.
 
-**What is lost in practice.** In the monocular study the comparison with the papers was the **quality check** ([METHODOLOGY.md](METHODOLOGY.md) §7): 40.64 dB against 41.01 published for Deformable-3DGS, and an anomalous gap on 4DGaussians that revealed the white/black background issue. Without it, an error **common to all methods** — camera poses converted wrongly, a wrong test split, a different resolution — would go unnoticed: every method would lose, say, 1–2 dB, the ranking could still look plausible, and nobody would see it. At 50 frames the results remain **comparable with each other**, since all four are under the same conditions, but not **verifiable from outside**.
+### Spacetime Gaussians at 300 frames
 
-### Option A — 50 frames for everyone (implemented)
+Six independent models of 50 frames, one per block, which is how the paper covers a 300-frame sequence (each model is trained on a 50-frame sequence and the models are arranged in series). The merged result is defined as:
 
-* **Pros:** one window, one protocol, minimum cost.
-* **Cons:** no external check. Every table has to state that the numbers are not comparable with the literature (already written into [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §2.3 and §8).
-
-### Option B — 50 frames for everyone, plus a 300-frame verification run of Wu and Fudan only
-
-The main comparison table stays at 50 frames. The 300-frame run serves **only as a check**: our Wu and Fudan are compared with the numbers in their papers.
-
-* **Condition for it to be a real check:** the verification run has to be read **at each method's official budget** (Wu at 14 000 fine steps, Fudan at 30 000); otherwise a gap cannot say whether the pipeline or the budget is different. That reading is already on the Protocol A curve and costs no GPU time (decision 6, option C).
-* **What it actually verifies:**
-  * the **common** part: frame extraction, poses, `cam00` as the test camera, resolution, metric code;
-  * the **Wu- and Fudan-specific** part.
-
-  It **does not verify** the preparation specific to the other two: Spacetime Gaussians runs its own per-frame COLMAP reconstruction, and Dynamic 3D Gaussians has its own conversion to the Panoptic format. For those two, confidence rises only partly. (An earlier version of this page was more optimistic on this point.)
-* **Wu allows a scene-by-scene check**, because its paper has a per-scene table (supplementary Table 6), as in the monocular study. Fudan reports only the six-scene average.
-* **Cost: less than it sounds.** Wu and Fudan take **the same number of steps** at 50 or 300 frames. The extra cost is mostly **disk and preparation** (extracting six times as many frames), plus a per-step slowdown of Fudan that has to be measured. `DELETE_FRAMES_AFTER_TRAIN` frees each scene after its run, so it can be done one scene at a time.
-* **Cons:** the 300-frame numbers must not be mixed with the 50-frame ones. They are a control experiment, not an extra column of the table.
-
-### Option B+ — as B, plus Spacetime Gaussians at 300 frames "as in the paper"
-
-Six 50-frame blocks, averaged as the paper does. It would work for STG too, but it costs **six times the whole STG loop** and needs new code: today the notebook trains only the first block. Listed for completeness; worth it only if B reveals problems.
-
-### Option D — a second, full-length study: 300 frames for the three methods that can do it
-
-Proposed by the study owner (2026-09-29). Two comparisons instead of one:
-
-* **short window, all four methods**: the main table of options A/B, 50 frames;
-* **full sequence, three methods**: 4DGaussians, 4DGS native-4D and Spacetime Gaussians on all 300 frames, **as their papers do**; Dynamic 3D Gaussians is left out, because at 300 frames it is impractical (608 000 steps per scene). Deformable-3DGS, the fifth studied method, is monocular only and is in neither table, so this is **three of the four multi-view methods**.
-
-Spacetime Gaussians runs at 300 frames exactly as its paper does: **six independent models of 50 frames**, one per block. The quantities then need a stated definition, the paper's where it has one:
-
-* **quality** (PSNR, SSIM, LPIPS, L1): the average over the 300 test images, i.e. over the six blocks, as the paper reports it;
-* **training time**: the sum of the six trainings;
-* **storage**: the sum of the six models;
+* **quality** (PSNR, SSIM, LPIPS, L1): the mean over the 300 test images;
+* **training time, steps, images seen, storage**: summed over the six;
 * **peak VRAM**: the maximum of the six.
 
-**Pros**
+### How it is implemented
 
-* It is the literature check of option B, extended to Spacetime Gaussians: each of the three is directly comparable with its own paper, scene by scene for 4DGaussians.
-* It is a result in its own right: the three methods on the task as the field defines it, not only on a short window.
-* For 4DGaussians and 4DGS native-4D the cost in steps is the same as at 50 frames; the extra cost is disk and preparation.
-
-**Cons**
-
-* **Spacetime Gaussians costs six times its 50-frame loop**, and its preparation grows from 50 to 300 per-frame COLMAP reconstructions per scene (CPU time).
-* **It needs new code in notebook 07**: training block *k* on frames 50k … 50k+49, and merging the six results into one benchmark entry per scene. Today the notebook trains only the first block. It also needs a small change in the analysis, which must not mix the 300-frame table with the 50-frame one.
-* Protocol B at 300 frames is not proposed: its targets would have to be recalibrated, and for Spacetime Gaussians "the first time the target is reached" is not defined across six separate models. The second study would be Protocol A only, read at each method's official budget (decision 6, option C).
-
-**Status:** the owner's current preference, and **implemented** (2026-09-29), not yet run. It subsumes option B.
-
-* **Notebooks 05 and 06** need no change: the window is `NUM_FRAMES`, and a 300-frame run goes to its own folders (`<scene>_f300_…`).
-* **Notebook 07** trains the scene in blocks whenever `NUM_FRAMES` is above 50: six upstream runs (block *k* from `colmap_<50k>` with `--duration 50`), each with the monitor attached and its JSON under `<run>/blocks/block_<k>/`, then merged with the definitions above into the run's one benchmark JSON. An interrupted scene resumes at the first unfinished block; a run in Protocol B is refused. This is covered by the notebook checks (a 300-frame run with an interrupted block, the resume, the merge and its definitions, the refusal of Protocol B and of a window that is not a multiple of 50).
-* **Analysis:** `GS_STUDY=n3dv_full` builds the three-method, 300-frame study under `results/n3dv/analysis_f300/`, and `GS_STUDY=n3dv` keeps only the 50-frame runs. The two share the data folder and are told apart by the window each JSON records.
-* **Notebook 04 refuses a window longer than 50 frames**: cell 0.1 stops with an explanation, so Dynamic 3D Gaussians cannot be started on the full-length study by mistake.
-
-To launch it, pass `--set NUM_FRAMES=300 --set TRAINING_MODE=iterations` to `scripts/run_benchmark.py` for notebooks 05, 06 and 07.
-
-### Option C — 300 frames for everyone
-
-Not feasible: Dynamic 3D Gaussians becomes impractical and Spacetime Gaussians becomes six models. It would mean dropping one or two methods from the comparison.
-
-### When the decision has to be taken
-
-An earlier version of this page said this decision "has to be taken first and costs rerunning everything". More precisely:
-
-* **Only the window of the main table is irreversible.** If all runs are made at 50 frames and later the main comparison is wanted at 300, everything is rerun.
-* **The verification run of option B can be added at any time.** It invalidates nothing: it goes into separate folders (`_f300_`), and the notebooks refuse to mix windows (`run_is_complete()` checks `num_frames`).
-
-In practice: **50 or 300 for the main table must be chosen first**, and 50 is effectively forced if all four methods are to stay. **A or B can wait for the smoke test**, when the disk and time costs are known.
-
-**Recommendation:** 50 frames for the main table, and add B as soon as the smoke test confirms that disk and time allow it.
+* Notebooks 05 and 06 take the window from `NUM_FRAMES`; runs go to `<scene>_f300_…` or `<scene>_f50_…` folders.
+* Notebook 07 trains in blocks whenever `NUM_FRAMES` is above 50, keeps each block's JSON under `<run>/blocks/block_<k>/` and merges them into one benchmark JSON. An interrupted scene resumes at the first unfinished block.
+* The analysis keeps the two windows apart: `GS_STUDY=n3dv` reads the 300-frame runs and writes `results/n3dv/analysis/`; `GS_STUDY=n3dv_f50` reads the 50-frame runs and writes `results/n3dv/analysis_f50/`.
 
 ---
 
 ## 3. Which Spacetime Gaussians model
 
-**Where:** cell 0.1 of [`notebooks/07_spacetime_gaussians_li_n3dv.ipynb`](../notebooks/07_spacetime_gaussians_li_n3dv.ipynb), the variable `STG_MODEL`.
+**Where:** cell 0.1 of notebook 07, the variable `STG_MODEL`.
+
+**Decided 2026-10-02: both released variants are benchmarked, as two rows of the results. If running both costs too much, only `ours_lite` is run.** What "too much" means is open and waits for the smoke test.
 
 ### The two released models
 
-The authors release two, with separate configs (`configs/n3d_lite/` and `configs/n3d_full/`) and separate rasterizers. They differ in **how the Gaussians carry colour**:
+The authors release two, with separate configs (`configs/n3d_lite/`, `configs/n3d_full/`) and separate rasterizers. They differ in how the Gaussians carry colour:
 
-* **`ours_lite`** — each Gaussian directly holds an RGB colour, and the rasterizer (`diff_gaussian_rasterization_ch3`) writes it into the image.
-* **`ours_full`** — each Gaussian holds 9 numbers, a *feature* rather than a colour. The rasterizer (`diff_gaussian_rasterization_ch9`) produces a feature image, and a **small neural network** (an MLP, `rgbdecoder`) turns it into RGB, taking view direction and time into account. It renders reflections and view-dependent effects better, and it is the variant the paper's headline table reports.
+* **`ours_lite`** — each Gaussian holds an RGB colour directly.
+* **`ours_full`** — each Gaussian holds a 9-number feature; the rasterizer produces a feature image and a small neural network (an MLP, `rgbdecoder`) turns it into RGB, using the view direction and the time.
 
-### Option A — `ours_lite` (implemented)
+In the paper's own table (Appendix B, Table 6) the full model is 0.46 dB better in PSNR (32.05 against 31.59), slightly better in LPIPS (0.044 against 0.047), twice as large (200 MB against 103 MB) and half as fast to render (140 FPS against 310).
 
-**Pros**
+### Why both
 
-* **Homogeneity.** None of the other three methods has a neural colour decoder: 4DGaussians and 4DGS native-4D use spherical harmonics, Dynamic 3D Gaussians an RGB per Gaussian. With lite all four produce colour "inside the Gaussians", and the VRAM, time and storage columns measure the same thing.
-* Cheaper per step, and fits a smaller GPU more easily.
+* **`ours_full` is the method as its authors present it**: the headline row of the paper.
+* **`ours_lite` is the homogeneous comparison**: neither of the other two methods has a neural colour decoder. The authors themselves say the MLP "mainly compensates for view-dependent appearance changes" and that even subtle colour mismatches move the PSNR (issue [#119](https://github.com/oppo-us-research/SpacetimeGaussians/issues/119)).
+* With both rows, a reader can see how much of the method's result is the spacetime representation and how much is the decoder.
 
-**Cons**
+### What it costs
 
-* The paper's headline row is `Ours` (full), not `Ours-lite`. A reader who knows the paper expects the higher number. In the paper's own N3DV table the gap is about **0.5 dB of PSNR**: small but real.
+One more full loop of notebook 07, the most expensive notebook. Two details:
 
-### Option B — `ours_full`
+* **The per-frame COLMAP stage is shared between the variants only if the scene data is kept.** By default a finished scene frees its frames and its COLMAP models (`DELETE_FRAMES_AFTER_TRAIN = True`), so the second variant would rebuild all of them. To reuse them, run the first variant with `--set DELETE_FRAMES_AFTER_TRAIN=false`, disk permitting. An earlier version of this page said the stage was "cached and shared" without this condition.
+* **The only published timing** is "The training time for a 50-frame sequence is 40-60 minutes on a single NVIDIA A6000 GPU" (the paper, implementation details), without saying for which variant. At 300 frames a variant is 6 blocks × 6 scenes = 36 models, i.e. 24–36 hours on that card. For comparison, 4DGaussians reports 40 minutes per scene (Table 3, on an RTX 3090): about 4 hours for the six scenes.
 
-**Pros**
+### The fallback
 
-* The method is represented at its best, as its authors present it, and its number sits next to the paper's headline row (32.05 dB against 31.59 for lite, on the 300-frame average).
-* **It works today with no change to the authors' code.** An earlier version of this page claimed that the released `save_ply()` does not write the decoder. That was wrong: the commented-out `torch.save` is in `ourslite.py`, where there is no decoder to save. In `oursfull.py` the decoder has been saved as `point_cloud.pt` since the first commit (`oursfull.py:411`) and every loader reads it back (`:483`, `:572`, `:661`, `:770`). Notebook 07 already counts `point_cloud.pt` in the storage column, and the training renderer applies the decoder itself (`renderer/__init__.py:103`), so the monitor's metrics are those of the full model. See [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §8.
+If both are too expensive, `ours_lite` alone. The comparison with the paper survives, because the paper has a row for it (31.59 dB). What is lost is the paper's headline number.
 
-**Cons**
+**Open sub-point (3a): the threshold.** No number has been fixed for "too expensive". The smoke test gives the hours per variant on the chosen GPU ([how](#the-smoke-test)). An intermediate option exists: both variants on the 50-frame study, one on the 300-frame one.
 
-* More VRAM and more time per step than lite (a 9-channel rasterizer plus the MLP).
-* One method out of four has a neural component the others lack. If it wins on PSNR, it is not clear whether the credit goes to the spacetime representation or to the network. The authors themselves say the MLP "mainly compensates for view-dependent appearance changes" and that even subtle colour mismatches move the PSNR (issue [#119](https://github.com/oppo-us-research/SpacetimeGaussians/issues/119)), so part of the gap is exactly the kind of per-view colour correction that Dynamic 3D Gaussians does with its per-camera gain and offset, and the other two do not do at all.
+### How it is implemented
 
-### Option C — both
-
-`STG_MODEL` is a knob (`--set STG_MODEL=ours_full`), `ours_full` runs go to their own folders (`<scene>_f50_iters30000_full`), and `stg_model` is in every JSON. One extra loop of notebook 07, with its per-frame COLMAP stage cached and shared. **Not yet done:** the analysis pipeline treats one method folder as one method, so with both variants in it the tables would mix them. For C, the analysis has to be taught to split them into two rows — a small change, to be made only if C is chosen. The table would carry `full` as the method's headline, as in the paper, and `lite` as the homogeneous comparison.
-
-### What to weigh
-
-Do you want **the methods as their authors present them** (B), or **the methods reduced to a common shape so the columns mean the same thing** (A)? The monocular study consistently chose the second: one resolution, one background, one budget, one LPIPS backbone. There is no longer a technical obstacle to either.
-
-**Recommendation:** B, given the stated goal of staying comparable with the papers, with the decoder declared in the methodology as a difference that is kept, not removed. C if GPU time allows, because `lite` is the variant that answers the homogeneity question. The earlier recommendation of A rested on the non-existent bug, and is withdrawn.
+`STG_MODEL` defaults to `ours_lite`. `ours_full` runs go to their own folders (`<scene>_f300_iters30000_full`), `stg_model` is recorded in every JSON, and the analysis reports the two variants as two methods; a variant that was not run is left out of the figures.
 
 ---
 
 ## 4. Which GPU
 
-**Where:** not in the code at all — it is what you select when you start the machine. See also the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh).
+**Where:** not in the code — it is what you select when you start the machine. See also the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh).
+
+**Open. It has to be chosen before the first run.**
 
 ### Why this is a decision and not a detail
 
-Two of the ten monitored metrics, **training time** and **peak VRAM**, are not properties of the method but of the pair *method + card*. The same run is much faster on an L4 than on a T4. Therefore:
+Two of the monitored metrics, **training time** and **peak VRAM**, are not properties of the method but of the pair *method + card*. Therefore:
 
-* **every run must use the same GPU type**, including any rerun of a single scene. Mixing cards makes the times incomparable and removes the meaning of Protocol B;
+* **every run must use the same GPU type**, including any rerun of a single scene;
 * the benchmark JSON **does not record** which card produced a number, so it has to be written down in the documents;
-* **one run at a time** on the GPU, because VRAM is measured on the whole device (by polling `nvidia-smi`) and a second run would be charged to the method under test.
+* **one run at a time** on the GPU, because VRAM is measured on the whole device (by polling `nvidia-smi`).
 
 > If two methods are trained on two different GPUs, their training times cannot be compared, and the "quality per unit of cost" question that Protocol B exists to answer has no answer. **Mixing GPU types means rerunning.**
 
@@ -274,213 +159,218 @@ Two of the ten monitored metrics, **training time** and **peak VRAM**, are not p
 
 | GPU | Pros | Cons |
 |---|---|---|
-| **T4** (16 GB) | The same card as the monocular study: in principle both studies' costs sit on one scale. Cheapest per hour. | The slowest, and the multi-view methods are heavier than the monocular three; Dynamic 3D Gaussians at 108 000 steps × 6 scenes becomes very long. The "continuity" is also **partly illusory**: dataset, resolution and window differ, and so does the machine around the GPU (CPU and disk, which matter for COLMAP and data loading) compared with Colab. |
-| **L4** (24 GB) | Good speed/price balance and VRAM headroom. Makes the "expensive" options (1C, 2B) affordable. | Times are not comparable with the monocular study. |
+| **T4** (16 GB) | The card of the monocular study. Cheapest per hour. | The slowest. Spacetime Gaussians needs `--gtisint8 1` to fit (below). The "continuity" with the monocular study is partly illusory: dataset, resolution and window differ, and so does the machine around the GPU. |
+| **L4** (24 GB) | Good speed/price balance; fits Spacetime Gaussians as its README requires. | Times are not comparable with the monocular study. |
 | **A10G** (24 GB) | Faster still. | More expensive per hour; same incomparability. |
-| **A100** (40/80 GB) | The fastest. | Wasteful: in the monocular study no run exceeded 5.1 GB of VRAM. You pay for memory you do not use. |
+| **A100** (40/80 GB) | The fastest. | Pays for memory that may not be needed: in the monocular study no run exceeded 5.1 GB of VRAM. |
 
-The binding constraint is mostly **time**, not memory — with one exception. Spacetime Gaussians' README states that training on N3DV needs 24 GB, because the ground-truth images are held on the GPU as floats. At 50 frames that is roughly 15–16 GB of images, which does not fit a T4. The repository's `--gtisint8 1` option stores them as 8-bit integers, which is lossless for 8-bit PNG frames. On a T4 it is required (`--set EXTRA_TRAIN_ARGS="--gtisint8 1"` for notebook 07); on a 24 GB card it is optional.
+**Memory.** Spacetime Gaussians' README states: "You need 24GB GPU memory to train on the Neural 3D Dataset", because "training images are loaded into GPU memory". Its code has an option that holds them as 8-bit integers instead of floats (`gtisint8`, `thirdparty/gaussian_splatting/arguments/__init__.py:147`; it is not mentioned in the README), which is lossless for 8-bit PNG frames. On a 16 GB card it is required (`--set EXTRA_TRAIN_ARGS="--gtisint8 1"`); on a 24 GB card it should not be. Whether 24 GB is enough for `ours_full`, and for the other two methods at 300 frames, is to be measured.
 
 ### What can honestly be said about cost today
 
-No estimate of GPU hours is given here, on purpose: nothing has run yet, and extrapolating from papers that used other GPUs, other windows and other budgets would give a number that looks precise and is not. What the papers do report, as anchors only:
+No estimate of GPU hours is given here: nothing has run yet, and the published figures come from other cards.
 
 | Method | Published training time on N3DV | Conditions |
 |---|---|---|
-| 4DGaussians | 40 min per scene | 300 frames, 3 000 + 14 000 steps (paper Table 3; GPU not stated in the N3DV setup) |
-| Spacetime Gaussians | 40–60 min per 50-frame chunk | NVIDIA A6000 (paper, Appendix) |
+| 4DGaussians | 40 min per scene | 300 frames, 3 000 + 14 000 steps, RTX 3090 (paper, Table 3 and §5.1) |
+| Spacetime Gaussians | 40–60 min per 50-frame model | NVIDIA A6000 (paper, implementation details); variant not stated |
 | 4DGS native-4D | not reported | — |
-| Dynamic 3D Gaussians | not reported on N3DV | — |
 
-**The way to get real numbers is a smoke test**, on the GPU type being considered. It is cheap, and it is needed anyway to check that the pipeline runs:
+### The smoke test
 
-1. one scene (`sear_steak`), `NUM_FRAMES=50`, Protocol A, but stopped after about 1 000–2 000 steps per method, through `run_benchmark.py`;
-2. read from each JSON the seconds per step and the peak VRAM, and from the log the preparation time (download, frame extraction, COLMAP; notebook 07's 50 per-frame COLMAP runs are CPU time and do not depend on the GPU);
-3. multiply: seconds per step × budget × 6 scenes, plus preparation, for each option of decisions 1, 2 and 3.
+A smoke test is an ordinary Protocol A run of one scene, stopped after a few thousand steps and written to its own folder so that it can never be read as a result:
 
-The result is a table of hours per option on that card, which is what the budget discussion with the project's collaborators needs. Run the same smoke test on two card types (for example T4 and L4) if the choice between them is open: a few dollars of GPU time buy a decision that cannot be reversed later.
+```bash
+python3 scripts/run_benchmark.py notebooks/05_4dgaussians_wu_n3dv.ipynb \
+    --set RUN_MODE=single --set SCENE=sear_steak --set NUM_FRAMES=50 \
+    --set MAX_ITERATIONS=2000 --set EVAL_EVERY_N_ITERS=500 \
+    --set ROOT_NAME=dgs-smoke --set STORAGE_MODE=local
+```
 
-**Recommendation:** an L4, stated wherever the results are quoted — to be confirmed by the smoke test and by the budget available.
+What to run, on the GPU type being considered:
+
+1. the three notebooks at `NUM_FRAMES=50`, notebook 07 once per variant;
+2. notebooks 05 and 06 again at `NUM_FRAMES=300`: their step count does not change with the window, but data loading and the evaluation of 300 test views do, and neither extrapolates from 50 frames;
+3. Spacetime Gaussians at 300 frames does **not** need its own smoke run: it is six times the 50-frame one, COLMAP included.
+
+Then `python3 scripts/estimate_gpu_hours.py <workdir>/bench_out/dgs-smoke` prints what was measured (seconds per step, seconds per evaluation, peak VRAM, preparation time, disk per scene) and the hours the full study would take, per method and window.
+
+**How far to trust it.** The training hours are a lower bound: a short run stops while the number of Gaussians is still growing (densification runs until step 9 000 for Spacetime Gaussians, 10 000 for 4DGaussians, 15 000 for 4DGS native-4D), and a step gets slower as they grow. A single complete run of the cheapest method is the way to see by how much.
+
+**Recommendation:** a 24 GB card, stated wherever the results are quoted, confirmed by the smoke test and by the budget available.
 
 ---
 
-## 5. How to configure Dynamic 3D Gaussians on N3DV
+## 6. The Protocol A budget
 
-**Where:** notebook [`04`](../notebooks/04_dynamic3dgaussians_luiten_n3dv.ipynb), cells 3.5 (masks) and the world-frame conversion; see [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §5.2.
+**Where:** `MAX_ITERATIONS` in cell 0.1 of the three notebooks.
+
+**Decided 2026-10-02: each method runs for the number of steps its authors use on N3DV. There is no longer a step count common to the methods.**
+
+### The official budgets (re-read in the repositories on 2026-10-02)
+
+| Method | Official N3DV schedule | Batch (views per step) | Images seen | Densification stops at |
+|---|---|---|---|---|
+| 4DGaussians | 3 000 coarse + **14 000** fine, on every scene (`arguments/dynerf/default.py`; the per-scene files change only the batch) | 4 on `coffee_martini` and `flame_salmon_1`, 2 on the other four | 68 000 or 34 000 | 10 000 |
+| 4DGS native-4D | **30 000**, on every scene (`configs/dynerf/<scene>.yaml`) | 4 | 120 000 | 15 000 |
+| Spacetime Gaussians | **30 000** (the default of `arguments/__init__.py`; the N3DV configs do not set it) | 2 | 60 000 per model, 360 000 for the six models of a scene | 9 000 |
+
+### Why
+
+The monocular study gave every method 30 000 steps, and its own results showed that a step is not a common unit of work: the methods use different batch sizes, so the same number of steps is a very different amount of training ([METHODOLOGY.md](METHODOLOGY.md) §3.5, [RESULTS.md](RESULTS.md) §4). On N3DV a uniform 30 000 would also run 4DGaussians at nearly twice its official budget (17 000). Running each method as its authors do gives the number its authors would report, which is what the comparison with the papers needs.
+
+### What is given up
+
+* **The "at equal steps" table.** The step column now differs: 17 000, 30 000, 30 000. The comparison across methods is on images seen and on time, which the analysis already uses as budget axes. The images seen differ too, by up to a factor of 3.5 (34 000 against 120 000): that is the methods' own tuning, and it is declared, not removed.
+* **It can be recovered for 4DGaussians alone**, by rerunning notebook 05 with `--set MAX_ITERATIONS=27000`. Its learning-rate schedules are fixed in steps (`position_lr_max_steps = 20 000`, `arguments/__init__.py:119`; `scene/gaussian_model.py:185–196`), so the longer run passes through the same states as the official one up to step 14 000.
+
+### Spacetime Gaussians: two readings of one run
+
+The official flow trains 30 000 steps and then evaluates **one snapshot per scene**, set by `test_iteration` in the scene's config. It is **not the same on every scene**:
+
+| Scene | `test_iteration` (both `n3d_lite` and `n3d_full`) |
+|---|---|
+| `cook_spinach`, `cut_roasted_beef`, `flame_steak`, `sear_steak` | 25 000 |
+| `coffee_martini` | 10 000 |
+| `flame_salmon_1` | 12 000 |
+
+An earlier version of this page said 25 000 for all six. The two scenes with an earlier snapshot are also the two whose configs set `densify: 2`.
+
+**Decided:** train 30 000 and report both readings — the end of the run, and the official snapshot of each scene, which is the one to set next to the paper. The snapshot costs nothing: all three values fall on the sampling grid, and each run records its own (`official_test_iteration`). The analysis writes both (`table_official_readout.csv`).
+
+### Sampling: about 30 points per run
+
+With budgets that differ, sampling every 1 000 steps would give the methods curves of different resolution. Each notebook now samples so that a run gives about 30 points:
+
+| Method | Interval | Samples |
+|---|---|---|
+| 4DGaussians | every 500 fine steps | 28, plus the baseline one (the coarse stage is not sampled, as in the monocular study) |
+| 4DGS native-4D | every 1 000 steps | 30, plus the baseline one |
+| Spacetime Gaussians | every 1 000 steps | 30, plus the baseline one, per model |
+
+Each sample evaluates the whole test split, 300 views in the main study. That time is excluded from the training time, but it is GPU time that is paid for; the smoke test measures it.
+
+### What this means for Protocol B
+
+**The target calibration is unchanged.** The rule is `target(scene) = 1.05 × max over methods (minimum eval L1 on that method's Protocol A curve)` ([PROTOCOL_B_CALIBRATION.md](PROTOCOL_B_CALIBRATION.md)). It never assumed equal budgets; it needs every method to have actually reached the minimum it is credited with, which holds for a curve of any length. The bar is now "the worst of the methods' bests, as their authors run them".
+
+**For Spacetime Gaussians the minimum is taken over the whole 30 000-step curve**, not over the curve cut at the official snapshot. On the two scenes with an early snapshot the two can differ; taking the whole curve is the rule already applied to the other methods ("the minimum of the curve"), and it can be revisited when the curves exist.
+
+**Protocol B itself does not change.** It stops when the target is reached, its safety cap (60 000 steps) is above every official budget, and the schedules of the three methods are fixed in steps, so a Protocol B run follows the same trajectory as the Protocol A run until it stops.
+
+---
+
+## 7. Protocol B on the 300-frame window
+
+**Where:** notebook 07, which refuses a Protocol B run in blocks; the Protocol B targets in cell 0.1 of the three notebooks.
+
+**Open. To be taken after the Protocol A runs, when the curves show how much it matters.**
 
 ### The problem
 
-The authors of Dynamic 3D Gaussians **never ran it on N3DV**: their paper uses their own preparation of CMU Panoptic Sports, and their data-preparation code is not released (README, "Partial code release"). The repository's issues contain no guidance for N3DV from the authors ([#18](https://github.com/JonathonLuiten/Dynamic3DGaussians/issues/18) and [#17](https://github.com/JonathonLuiten/Dynamic3DGaussians/issues/17) cover custom data in general: "a point cloud from colmap should be fine").
+Protocol B stops a run "the first time the target is reached". At 300 frames Spacetime Gaussians is six independent models, each trained on its own 50 frames: there is no single run whose first crossing can be read. Today Protocol B is therefore run on the 50-frame window only, where the method is one model.
 
-The method needs two things N3DV does not have: a **foreground/background mask per image** (its `seg` loss, and the split that decides which Gaussians get the rigidity losses and which are anchored as background), and a **known floor plane** (its floor loss). Notebook 04 currently builds both: masks estimated from each camera's temporal median, and a world frame rotated and translated so that the floor sits at y = 0 ([DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §2).
+### Option A — Protocol B on the 50-frame window only (implemented)
 
-### What exists: the only published N3DV number, and how it was made
+* **Pros:** defined in the same way for all three methods; nothing to add.
+* **Cons:** the main study has no Protocol B. The 50-frame targets say nothing about the full sequence.
 
-The only published result of Dynamic 3D Gaussians on N3DV is in the **Spacetime Gaussians paper** (Appendix B, Table 6): **30.67 dB PSNR, 0.099 LPIPS**, on the six scenes, 300 frames. Later papers that quote it (for example HiCoM, NeurIPS 2024) take it from there. The STG authors write that the default hyper-parameters gave "subpar" quality on N3DV and that they tuned them. In issue [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81) of their repository, a maintainer of the repository (`lizhan17`, marked as collaborator on GitHub) states what they changed:
+### Option B — at 300 frames, with Spacetime Gaussians judged on its worst block
 
-> "Since the neural 3D video dataset does not provide foreground/background masks, we turn off the background segmentation loss in Dynamic3DGaussians and just set the last column of init_pt.cld.npz as all ones. We also disable the floor loss and set the log_scales in initialize_optimizer to 0.005."
+Proposed by the study owner (2026-10-02). The target of a scene is calibrated using, for Spacetime Gaussians, the **worst of its six models** (the largest of the six curve minima), so that every block can reach it. Each block then runs to the target.
 
-In plain terms: **no masks at all** (every Gaussian is treated as foreground, so the rigidity, rotation and isometry losses act on all of them and nothing is anchored as background), **no floor loss**, and the learning rate of the Gaussians' scales raised from 0.001 to 0.005 (`train.py:71` sets it in the optimiser; it is a learning rate, not an initial scale).
+* **Pros:** Protocol B on the main window, for all three methods.
+* **What has to be defined, and is not yet:**
+  * **the cost of the scene.** Six models are needed to render the sequence, so the natural definition is the *sum* of the six first-crossing times (and of the six storages), with VRAM the maximum — the same rule as the Protocol A merge;
+  * **what "reaching the target" means for the other two methods.** Their L1 is a mean over 300 views. Spacetime Gaussians would have to reach the target on *each* 50-view block, which is a stricter condition than reaching it on average: a method that is good on five blocks and slow on one is charged for the slow one.
+* **The hope behind the proposal** is that the six models converge quickly and that, on every scene, another method is the one that sets the bar, so that the asymmetry never binds. That can be checked on the Protocol A curves before any Protocol B run: if Spacetime Gaussians' worst block is never the binding minimum, the problem does not arise.
+* **Cost:** new code in notebook 07 (Protocol B per block, and the merge of six first crossings), and a Protocol B loop at 300 frames for notebooks 05 and 06.
 
-### Option A — estimated masks + floor loss (implemented)
+### Option C — no Protocol B run at 300 frames: read the crossing on the Protocol A curves
 
-**Pros**
+The Protocol A curves already contain "the first sample at which the target is met". For Spacetime Gaussians the merged curve is the mean over the six blocks at equal steps.
 
-* Keeps every component of the method as designed, including the static/dynamic split, which is what lets it pin the kitchen in place and spend its tracking on the person.
+* **Pros:** no GPU time and no new training code; the same rule for all three.
+* **Cons:** the resolution is the Protocol A grid (500 or 1 000 steps), far coarser than the 30-second sampling of a real Protocol B run, and for Spacetime Gaussians it assumes the six blocks are stopped at the same step.
 
-**Cons**
-
-* The masks are **this project's invention**. Their quality bounds the method's result, and the method's own README calls even the authors' masks "REALLY bad" and says they visibly degrade the results. Our masks may be better or worse, and nobody else has used them.
-* No published number was made this way, so there is nothing to check the result against.
-* The `seg` loss costs a second rendering pass per step (README, "Speeding up the code").
-
-### Option B — the STG authors' recipe
-
-**Pros**
-
-* It is the **only configuration with a published N3DV result**, so it is the one closest to comparability with the literature — the stated goal of the study.
-* It removes the part of notebook 04 that is most clearly ours (the masks) and the floor alignment, which was inferred rather than known. Less of the result depends on this project's preparation.
-* One rendering pass per step instead of two.
-
-**Cons**
-
-* It is not the method as its authors designed it, but as another group tuned it for this dataset. That has to be declared.
-* **The comparability is limited even so.** The published 30.67 dB is on 300 frames, and whether STG's authors ran it as one sequence or in 50-frame chunks is not stated. At 50 frames our number is not directly comparable (decision 2).
-* The reporter of issue #81 got NaN losses applying the recipe, and the cause appears to have been the camera-pose conversion, not the recipe. Notebook 04's conversion is untested on a GPU, so a **1-frame smoke test** (`NUM_FRAMES=1`: static reconstruction of the first frame only) should come first whichever option is chosen.
-* It needs a code change in notebook 04, not only a flag: a knob (`D3DG_SEG_MODE`) that writes an all-ones `seg` column, switches off the `seg` and `floor` losses, and sets the scale learning rate. Two details make it more than a switch:
-  * with every Gaussian marked as foreground the background set is empty, and the `bg` loss (`helpers.l1_loss_v2`, a `.mean()` over the background points) would be the mean of an empty tensor, i.e. NaN. The `bg` term has to be dropped too, which is what the quote's "background segmentation loss" most likely means;
-  * `get_dataset` (`train.py:23`) still opens a `seg/*.png` for every image, so constant masks must still be written.
-
-  A few hours including a 1-frame test; not done yet.
-
-### Option C — both
-
-The knob would make this possible, at the cost of one more loop of notebook 04, the most expensive notebook.
-
-**Recommendation:** B, as the default, given the goal of staying as close as possible to published practice; A as a secondary run only if GPU time allows. The recommendation can change if the 1-frame smoke test shows the recipe failing on our conversion.
+**Current default:** A. **Recommendation:** look at the 300-frame Protocol A curves first; C is the cheap way to see whether B is worth its code.
 
 ---
 
-## 6. The Protocol A budget of 30 000 steps
+## 8. A temporally subsampled window
 
-**Where:** `MAX_ITERATIONS` in cell 0.1 of notebooks 05–07 (notebook 04 has its own budget, decision 1).
+**Where:** nowhere yet. It would be a new knob in cell 0.1 of the three notebooks.
 
-### Where 30 000 came from, and whether it still holds
+**Open. Proposed on 2026-10-02 by the project's collaborators; to be taken after the smoke test.**
 
-In the monocular study 30 000 was a representative value of the three official D-NeRF schedules: 40 000 for Deformable-3DGS, 3 000 + 20 000 for 4DGaussians, 30 000 for 4DGS native-4D. On N3DV the official schedules are different:
+### The idea
 
-| Method | Official N3DV schedule | Batch (views per step) | Protocol A today | Ratio |
-|---|---|---|---|---|
-| 4DGaussians | 3 000 coarse + **14 000** fine | 4, or 2 on four scenes | 3 000 + 27 000 | **≈ 1.9× the official fine budget** |
-| 4DGS native-4D | **30 000** | 4 | 30 000 | 1× |
-| Spacetime Gaussians | trains **30 000**, the N3DV configs evaluate the **25 000** snapshot | 2 | 30 000 | 1× (1.2× the evaluated snapshot) |
-| Dynamic 3D Gaussians | 10 000 + 2 000 per frame | 1 | see decision 1 | — |
+Instead of the first 50 consecutive frames, take **one frame in six**: frames 0, 6, 12, … 294. That is still 50 frames, so it is still one Spacetime Gaussians block and costs what the 50-frame study costs, but it spans the whole 10 seconds, at 5 fps instead of 30. It asks how the methods cope with a lower temporal resolution.
 
-So the intuition that 30 000 no longer fits is **half right**. It is still the median and exactly the official budget of two methods, but it runs 4DGaussians at nearly twice its official N3DV budget. On D-NeRF it was 23 000 official against 30 000; on N3DV it is 17 000 against 30 000.
+### What it would and would not solve
 
-### A finding that makes this cheaper than it looks
+* **It makes the short window representative of the whole scene.** The first 50 frames are 1.67 seconds; one frame in six covers events anywhere in the sequence.
+* **It is not needed to cover the whole sequence**: the main study already does, with all 300 frames, and Spacetime Gaussians is not limited to 50 frames (it uses six models). The subsampled window is a different experiment, not a substitute for the main one.
+* **Its results are not comparable with any paper.**
 
-In all three whole-window methods the **learning-rate schedules are fixed in steps, not in proportion to the total budget**:
+### The risk is temporal, not spatial
 
-* 4DGaussians: every scheduler uses `position_lr_max_steps = 20 000` (`arguments/__init__.py:119`, `scene/gaussian_model.py:186–196`). Densification stops at `densify_until_iter = 10 000` (`arguments/dynerf/default.py`). `opt.iterations` is only used to stop, to save, and to skip the last optimiser step (`train.py:130, 238, 290`).
-* 4DGS native-4D: `position_lr_max_steps: 30_000` in each official YAML.
-* Spacetime Gaussians: `position_lr_max_steps = 30 000`, densification until 9 000 (`arguments/__init__.py:98, 118`).
+Every instant keeps all its cameras, so the multi-view (spatial) consistency of each frame is untouched. What changes is the motion between consecutive training frames, which is six times larger:
 
-Consequence: a run with a longer budget passes **through the same states** as a run with the official budget, up to randomness. The 4DGaussians model at fine step 14 000 of a 27 000-step run is, in practice, the official N3DV model; the Spacetime Gaussians model at step 25 000 is the one its authors evaluate. Protocol A already samples the metrics every 1 000 steps, so **the official-budget result is already on the curve, at no extra GPU cost**.
+* **4DGaussians** encodes time in a grid whose official N3DV resolution is 150 steps for 300 frames (`resolution: [64, 64, 64, 150]` in `arguments/dynerf/default.py`). Fifty samples over the same span leave most of that grid unobserved.
+* **4DGS native-4D** would see the same 10-second duration with six times fewer observations per unit of time.
+* **Spacetime Gaussians** models each Gaussian's motion with a polynomial over one block. A block would then span 10 seconds instead of 1.67. Its authors did try a long span once: on `flame_salmon` they trained a single model on all 300 frames and report 29.17 dB PSNR and 0.068 LPIPS, against 29.48 dB and 0.063 for six 50-frame models, with a smaller total size (216 MB against 300 MB) and less training time per frame (the paper's supplementary, section *Longer Video Sequence*). That model saw all 300 frames, though, not one in six.
 
-### Option A — 30 000 uniform, as the monocular study (implemented)
+Whether the methods degrade gracefully is exactly what the experiment would measure. A large loss of quality is a possible and legitimate outcome.
 
-**Pros:** one budget for three methods, the same rule as the monocular study; "at equal steps, which is best?" has a literal answer.
-**Cons:** 4DGaussians is run well past its design point. On D-NeRF it kept improving past its budget, but that is not guaranteed on N3DV. The headline number is then not the one its authors would report.
+### What it needs
 
-### Option B — each method at its official budget
+A `FRAME_STRIDE` knob, and four places that honour it: the frame extraction, and the three per-method preparations (the reader constants patched in notebook 05, the frame times written by notebook 06, the per-frame COLMAP folders and start frame of notebook 07). Run folders and JSON must carry the stride, as they carry the window, and the analysis needs a study for it. Roughly a day of work including the checks; in GPU time, one more loop of each notebook at the cost of the 50-frame study.
 
-**Pros:** each method's number is the one its authors would produce, which is what comparability with the papers needs.
-**Cons:** the step column differs (17 000, 30 000, 30 000). And "steps" were never an equal unit of work anyway, because the batches differ: `images_seen` is the axis the analysis already uses to compare budgets.
+A possible extension, not costed: the frames that were skipped are available as a test of **temporal interpolation** (rendering instants the model never saw). All three methods are continuous in time, so it is possible in principle; it needs more code than the stride itself.
 
-### Option C — keep 30 000, and also read each method at its official budget
+### Options
 
-The same runs as A, plus one analysis step: a second table that takes, for each method, the entry at its official budget (4DGaussians fine 14 000, Spacetime Gaussians 25 000, 4DGS native-4D 30 000). No GPU cost.
+* **A — do not run it** (today's state).
+* **B — add it as a third study**, next to the 300-frame and the contiguous 50-frame ones.
+* **C — let it replace the contiguous 50-frame study.** Protocol B would then run on a window that is representative of the whole scene, at the same cost.
 
-**Pros:** both questions answered from one set of runs — "at equal steps" (A) and "as the authors run it" (B). This is also the number to set next to the papers in the 300-frame validation of decision 2B.
-**Cons:** two tables to explain instead of one. There is one technical caveat to check on the first real run: the monitor's renderer is the training renderer, not always the exact pipeline of each repository's `test.py` (Spacetime Gaussians' test uses a fused forward-only rasterizer). Small differences of the order of rounding are possible; they are the same in both tables, so they do not affect the comparison between them.
-
-**Recommendation:** C. It costs nothing, and it gives the "official budget" number without giving up the homogeneous one.
+**Current default:** A. **Recommendation:** decide once the smoke test has given the cost of a 50-frame loop; if the experiment is run, C is the option that adds no GPU time.
 
 ---
 
-## How the decisions interact
+## 9. LPIPS backend
 
-* **1C, 2B, 3C and 5C all add GPU hours.** How many of them are affordable is exactly what the smoke test of decision 4 has to establish.
-* **The irreversible ones are the main window (2) and the GPU (4).** The 300-frame verification run of 2B, and decisions 1, 3, 5 and 6, are a knob, one notebook to rerun, extra runs in separate folders, or an analysis step, and can be decided after the first results.
-* **2B and 6C belong together.** The 300-frame validation run is only a real check if it is read at the official budget, and 6C is what provides that reading.
+**Where:** `LPIPS_BACKEND` in cell 0.1 of the three notebooks.
 
-Suggested combination if the budget allows it: **1 = native (+ aligned), 2 = 50 frames + the 300-frame run of 05 and 06, 3 = full (+ lite), 4 = L4 after a smoke test, 5 = the STG recipe, 6 = C.** Minimal but still defensible: **native, 50 frames, full, L4, STG recipe, 6C**, with the lack of a literature check at 50 frames declared.
+**Open, low stakes.**
 
-## Preliminary orientation of the study owner (2026-09-29, not final)
+The multi-view notebooks force the pip `lpips` package for every method. The reason was Dynamic 3D Gaussians, which does not bundle `lpipsPyTorch` as the other repositories do: leaving the choice to each repository would have put one method on a different implementation. With that method set aside, the reason no longer applies.
 
-Recorded so the next steps follow it; each point may change with more information.
+* **Option A — keep the pip package (implemented).** One implementation by construction, whatever each repository bundles. LPIPS is then not comparable with the monocular study, which used the bundled package.
+* **Option B — use each repository's bundled `lpipsPyTorch`, as the monocular study does.** Continuity between the two studies. It requires checking that all three repositories bundle it and that the three copies are the same code; that check has not been made.
 
-1. **C** if the budget allows, otherwise **A**. Needs a GPU-hour estimate, from a smoke test.
-2. **D** (a second study at 300 frames for 4DGaussians, 4DGS native-4D and Spacetime Gaussians, without Dynamic 3D Gaussians), otherwise **B**, otherwise **A**, depending on the budget.
-3. Preference for **`ours_full`**, provided it works as the paper specifies. It does: the decoder-save "bug" did not exist (see decision 3 and [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §8).
-4. To be decided after smoke tests and a budget/access discussion with the project's collaborators.
-
-A general goal stated alongside: **results should stay comparable with the papers as far as possible**, while accepting the trade-offs a homogeneous comparison needs.
+Both are LPIPS with the VGG backbone and the official linear weights, so the difference is expected to be small. **Recommendation:** keep A unless LPIPS has to be compared across the two studies.
 
 ---
 
-## What the papers and repositories say (checked 2026-09-29)
+## 1. Iteration budget of Dynamic 3D Gaussians
 
-### Which methods have official N3DV results
+**Lapsed on 2026-10-02**, with the method. The question was whether to run it at its authors' schedule (10 000 steps on the first frame + 2 000 per later frame, 108 000 at 50 frames) or forced to the 30 000 steps of the others (about 408 per frame). The full write-up is in the history of this file (commit `39f6069` and earlier).
 
-The project studied five methods. Four accept multi-camera input; Deformable-3DGS is monocular only and has no N3DV path.
+## 5. How to configure Dynamic 3D Gaussians on N3DV
 
-| Method | Official N3DV result | Reported by the authors | Settings behind the number |
-|---|---|---|---|
-| 4DGaussians (Wu et al.) | **yes** — 31.15 dB PSNR, 0.016 D-SSIM, 0.049 LPIPS, 40 min, 90 MB (Table 3) | yes; per-scene values in the supplementary (Table 6) | 1352×1014, 300 frames, cloud from the first frame's SfM, 3 000 + 14 000 steps, per-scene batch from `arguments/dynerf/` |
-| 4DGS native-4D (Yang et al.) | **yes** — 32.01 dB, 0.014 DSSIM, 0.055 LPIPS, 114 FPS (Table 1) | yes; average only | 300 frames, one held-out view, 30 000 steps, batch 4 (`configs/dynerf/*.yaml`) |
-| Spacetime Gaussians (Li et al.) | **yes** — full 32.05 dB / 0.044 LPIPS, lite 31.59 dB / 0.047 LPIPS (Table 6) | yes | 1352×1014, first camera held out, 300 frames **trained as six 50-frame chunks**, 25 000-step snapshot, A6000 |
-| Dynamic 3D Gaussians (Luiten et al.) | **no** — only Panoptic Sports in its own paper | no; 30.67 dB / 0.099 LPIPS **reported by the STG authors** (same Table 6) with their tuning | see decision 5 |
-| Deformable-3DGS (Yang et al.) | not applicable (monocular) | — | — |
-
-Two consequences:
-
-* **Spacetime Gaussians is less affected by the 50-frame window than the others.** 50 frames is exactly its training unit, and our run is its first chunk. The paper's number is the average over six chunks, so it is still not identical, but it is the closest to like-for-like of the four.
-* **For Dynamic 3D Gaussians the only external reference is someone else's tuning**, which is why decision 5 exists.
-
-### Corrections this check produced
-
-Both are recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §8. The `ours_full` decoder is saved upstream (decision 3 rewritten). Notebook 05 overrode the official per-scene batch size of 4DGaussians (4 instead of 2 on four scenes); fixed.
-
-### Sources
-
-* Wu et al., *4D Gaussian Splatting for Real-Time Dynamic Scene Rendering*, CVPR 2024 — [arXiv 2310.08528](https://arxiv.org/abs/2310.08528), Table 3 and supplementary Table 6; repository [`hustvl/4DGaussians`](https://github.com/hustvl/4DGaussians), `arguments/dynerf/`.
-* Yang et al., *Real-time Photorealistic Dynamic Scene Representation and Rendering with 4D Gaussian Splatting*, ICLR 2024 — [arXiv 2310.10642](https://arxiv.org/abs/2310.10642), Table 1; repository [`fudan-zvg/4d-gaussian-splatting`](https://github.com/fudan-zvg/4d-gaussian-splatting), `configs/dynerf/`.
-* Li et al., *Spacetime Gaussian Feature Splatting*, CVPR 2024 — [arXiv 2312.16812](https://arxiv.org/abs/2312.16812), Appendix B Table 6 and Appendix E.1; repository [`oppo-us-research/SpacetimeGaussians`](https://github.com/oppo-us-research/SpacetimeGaussians), `configs/n3d_*`, README, issues [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81) and [#119](https://github.com/oppo-us-research/SpacetimeGaussians/issues/119).
-* Luiten et al., *Dynamic 3D Gaussians*, 3DV 2024 — [arXiv 2308.09713](https://arxiv.org/abs/2308.09713); repository [`JonathonLuiten/Dynamic3DGaussians`](https://github.com/JonathonLuiten/Dynamic3DGaussians), README and issues [#17](https://github.com/JonathonLuiten/Dynamic3DGaussians/issues/17), [#18](https://github.com/JonathonLuiten/Dynamic3DGaussians/issues/18).
-* Gao et al., *HiCoM*, NeurIPS 2024 — [arXiv 2411.07541](https://arxiv.org/abs/2411.07541), Table 6 (quotes the Dynamic 3D Gaussians N3DV values from the STG paper).
-
-## How to record the decision
-
-When one is taken, do all three of:
-
-1. set the knob in cell 0.1 of the affected notebook, or pass it on the command line as
-   `--set NAME=VALUE` to `scripts/run_benchmark.py` (see the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh));
-2. note the choice and the date in this file, replacing the entry's "not yet decided";
-3. if the choice differs from what [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4 and §6 describe, update those sections too — they state the current defaults as fact.
-
-Choices 1 to 3 are already recorded per run in the benchmark JSON (`budget_mode`, `num_frames`, `stg_model`), so a run always carries the decision it was made under, whatever this file says. **Choice 4 is not**: nothing in the JSON records which GPU produced a run, so it has to be written down here and repeated wherever the numbers are quoted.
+**Lapsed on 2026-10-02**, with the method. The question was whether to give it segmentation masks estimated by this project, or the recipe the Spacetime Gaussians authors used for the only published N3DV result of that method (no masks, no floor loss, a higher learning rate for the scales; issue [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81) of their repository). The full write-up is in the history of this file.
 
 ---
 
-## Under consideration: removing Dynamic 3D Gaussians from the comparison (2026-09-30)
+## Dynamic 3D Gaussians: set aside (2026-10-02)
 
-**Status: not decided.** Nothing has been removed: notebook 04 and decisions 1 and 5 stay as they are until the choice is taken. This section records why removing the method is being considered.
+**Decided 2026-10-02: the method is set aside for now.** Notebook 04 and its entries in the analysis are no longer part of the study. Nothing about the method was measured by this project: the decision rests on published numbers and on what including it would have required.
 
 ### What the published numbers say
 
-The only published result of Dynamic 3D Gaussians on N3DV was made by the Spacetime Gaussians authors, on their own protocol: 300 frames, 1352×1014, `cam00` held out (Spacetime Gaussians paper, Appendix B, Table 6). That table is therefore a direct comparison between the two:
+The only published result of Dynamic 3D Gaussians on N3DV was made by the Spacetime Gaussians authors, on their own protocol: 300 frames, 1352×1014, the first camera held out (their paper, Appendix B, Table 6; its caption says that FPS is measured at 1352×1014 and that the size is the total for 300 frames).
 
 | Method | PSNR ↑ | LPIPS ↓ | Model size | FPS ↑ |
 |---|---|---|---|---|
@@ -488,50 +378,91 @@ The only published result of Dynamic 3D Gaussians on N3DV was made by the Spacet
 | Spacetime Gaussians, lite | 31.59 | 0.047 | 103 MB | 310 |
 | Spacetime Gaussians, full | 32.05 | 0.044 | 200 MB | 140 |
 
-For context, the other two methods' own papers report, on the same resolution:
-* 4DGaussians: 31.15 dB, 0.049 LPIPS, 90 MB, 30 FPS (Table 3);
-* 4DGS native-4D: 32.01 dB, 0.055 LPIPS, 114 FPS (Table 1).
+For context, the other two methods' own papers report, at the same resolution: 4DGaussians 31.15 dB, 0.049 LPIPS, 90 MB, 30 FPS (Table 3); 4DGS native-4D 32.01 dB, 0.055 LPIPS, 114 FPS (Table 1). These come from different papers and different GPUs, so the comparison is indicative.
 
-These come from different papers, so the comparison with Dynamic 3D Gaussians is indicative rather than exact.
+* **Last in quality on both metrics.** 0.5–1.4 dB behind in PSNR, and about twice as bad in LPIPS (0.099 against 0.044–0.055), the widest gap in the table.
+* **Model size out of scale.** 2.7 GB against 90–200 MB, 14–30 times larger, because it stores the position and rotation of every Gaussian for every frame.
+* **The only column it wins is rendering speed.**
+* **That number already comes from a tuned configuration.** The Spacetime Gaussians authors write that with the default hyper-parameters the rendering quality was "subpar", and that they tuned them for this dataset.
+* **Uneven across scenes.** The per-scene values of the same runs, given in the Spacetime Gaussians paper's per-scene table and quoted by HiCoM (Table 6), are 32.97–33.68 dB on `cook_spinach`, `flame_steak` and `sear_steak`, but 26.49 on `coffee_martini` and 26.92 on `flame_salmon`.
 
-What follows from the numbers:
+### Why the rendering speed does not outweigh the rest
 
-* **Last in quality on both metrics.**
-  * PSNR: 0.5–1.4 dB behind. Around 30 dB, 1 dB is roughly 26% more squared error.
-  * LPIPS, the metric closest to perceived quality: about **twice as bad** as all the others (0.099 against 0.044–0.055), the widest gap in the table.
-* **Model size out of scale.** 2.7 GB against 90–200 MB, i.e. 14–30 times larger, because it stores the position and rotation of every Gaussian for every frame. Model storage is one of the ten monitored metrics.
-* **The only column it wins is rendering speed** (460 FPS). This is also structural: each frame is a set of static 3D Gaussians, with no network or deformation to evaluate.
-* **That number already comes from a favourable, tuned configuration.** The STG authors report that the default hyper-parameters gave "subpar" quality on N3DV and had to be changed (Appendix E.1; issue [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81)). Without that tuning a lower result is expected.
-* **Uneven across scenes.** The per-scene values quoted by HiCoM (Table 6), from the same STG runs, are 32.97–33.68 dB on `cook_spinach`, `flame_steak` and `sear_steak`, but 26.49 on `coffee_martini` and 26.92 on `flame_salmon`.
+The judgement of the project: for its purpose, a fluid playback, a rendering speed above roughly 120 FPS is already more than enough, and the difference between 140 and 460 FPS is not perceptible on an ordinary display. The one advantage of the method is therefore not worth a clear loss of quality and a model more than ten times larger.
 
-### Why: a tracking method, not a view-synthesis method
+Two limits of this argument, stated so that it is not read as more than it is:
 
-The paper's title is *"Tracking by Persistent Dynamic View Synthesis"*: the goal is dense, physically consistent 3D tracking of every point. To get it, the method accepts constraints that cost image quality:
-* colour and size of each Gaussian are fixed over time;
-* rigidity losses tie neighbouring Gaussians together;
-* it depends on a foreground/background mask.
+* **Rendering speed is not measured by this benchmark.** The monitor records quality, training time, steps, images seen, number of Gaussians, peak VRAM and model storage. The FPS figures above are the papers', each measured on its authors' hardware.
+* **It is an argument about this method's advantage, not a claim that the remaining methods are all above 120 FPS.** 4DGaussians reports 30 FPS on N3DV in its own paper.
 
-This benchmark measures novel-view synthesis, not tracking. The method's strength would never be measured, while its costs would. Age does not explain the gap: it was published in August 2023, the other three between October and December 2023.
+### What including it would have required
 
-### What keeping it costs
+It was the method behind decisions 1 and 5, and the reason the main window could not be longer than 50 frames:
 
-It is the method behind decisions 1 and 5, and the reason the main window cannot be longer than 50 frames (decision 2):
 * 108 000 steps at 50 frames, 608 000 at 300;
-* no official N3DV configuration;
-* masks that N3DV does not provide, which must be either estimated by this project or taken from another group's recipe;
-* a Protocol B that is not comparable with the other methods (see [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §5);
-* a data conversion that is entirely this project's code and has never run on a GPU.
+* no official N3DV configuration, and no data-preparation code released by its authors;
+* foreground/background masks that N3DV does not provide, to be either estimated by this project or replaced by another group's recipe;
+* a Protocol B that would not have been comparable with the other methods, because stopping early truncates the sequence instead of producing a less converged model;
+* a data conversion that was entirely this project's code and had never run on a GPU.
 
-### Assessment
+The title of the paper is *"Tracking by Persistent Dynamic View Synthesis"*: its goal is dense, physically consistent 3D tracking, and it accepts constraints that cost image quality to get it. This benchmark measures novel-view synthesis, so the method's strength would not have been measured, while its costs would.
 
-Removing it is defensible. On the only published evidence, the most likely outcome of keeping it is a method that ranks last in quality and in storage and first only in rendering speed, obtained through the most expensive and most project-specific part of the pipeline. The argument for keeping it is completeness, since it was one of the studied methods. That can be covered by stating in the methodology why it was excluded, with these numbers.
+### What "set aside" means
 
-**What the data cannot rule out:** with the STG recipe and the easier 50-frame window, it might come closer to the others on the simpler scenes. No available number suggests it would overtake them in quality.
+* The main comparison and the short-window one have the same three methods.
+* Decisions 1 and 5 lapse; the 50-frame constraint on the main window disappears (decision 2).
+* Notebook 04 is removed from the repository. It was never run; its text and code remain in the history of the branch.
+* The method stays among the five studied by the project ([METHODOLOGY.md](METHODOLOGY.md) §1, [REFERENCES.md](REFERENCES.md)).
 
-**If it is removed:**
-* the main comparison becomes the same three methods as the full-length study;
-* decisions 1 and 5 lapse;
-* notebook 04 and its analysis entries are taken off the branch (possibly kept locally);
-* the methodology gains a paragraph explaining the exclusion.
+**What the data cannot rule out:** with a different configuration, or on a short window, it might come closer to the others on the simpler scenes. No published number suggests it would overtake them in quality.
 
-Sources: [Spacetime Gaussians, arXiv 2312.16812](https://arxiv.org/abs/2312.16812) (App. B Table 6, App. E.1); [4DGaussians, arXiv 2310.08528](https://arxiv.org/abs/2310.08528) (Table 3); [4DGS native-4D, arXiv 2310.10642](https://arxiv.org/abs/2310.10642) (Table 1); [Dynamic 3D Gaussians, arXiv 2308.09713](https://arxiv.org/abs/2308.09713) and its [README](https://github.com/JonathonLuiten/Dynamic3DGaussians); [HiCoM, arXiv 2411.07541](https://arxiv.org/abs/2411.07541) (Table 6).
+---
+
+## How the decisions interact
+
+* **3 and 4 are tied by the budget.** Spacetime Gaussians at 300 frames is 36 models per variant; whether both variants are affordable is what the smoke test on the chosen GPU has to say.
+* **2 and 7.** Making 300 frames the main window leaves the main study without Protocol B until decision 7 is taken.
+* **2 and 8.** The subsampled window (8) is a candidate replacement for the contiguous 50-frame study, not for the main one.
+* **6 and 7.** With official budgets, the Protocol B targets are "the worst of the methods' bests as their authors run them"; the calibration needs no change.
+
+## What the papers and repositories say
+
+Checked on 2026-09-29 and re-read in full on 2026-10-02, against the papers and the current default branch of each repository.
+
+| Method | Official N3DV result | Settings behind the number |
+|---|---|---|
+| 4DGaussians (Wu et al.) | 31.15 dB PSNR, 0.016 D-SSIM, 0.049 LPIPS, 40 min, 30 FPS, 90 MB (Table 3); per scene in the appendix (Table 6) | 1352×1014, 300 frames, RTX 3090, 3 000 + 14 000 steps |
+| 4DGS native-4D (Yang et al.) | 32.01 dB, 0.014 DSSIM, 0.055 LPIPS, 114 FPS (Table 1); average only | 300 frames, one view held out, 30 000 steps, batch 4, densification stopped at the midpoint |
+| Spacetime Gaussians (Li et al.) | full 32.05 dB / 0.044 LPIPS / 200 MB / 140 FPS; lite 31.59 dB / 0.047 LPIPS / 103 MB / 310 FPS (Appendix B, Table 6) | 1352×1014, first camera held out, 300 frames as six 50-frame models, 40–60 min per model on an A6000 |
+| Deformable-3DGS (Yang et al.) | not applicable: monocular only | — |
+
+### Corrections produced by the full re-read of 2026-10-02
+
+Recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §7. None affects a result, since no run has been made.
+
+* **Spacetime Gaussians' test snapshot is per scene**, not 25 000 everywhere (decision 6).
+* **4DGS native-4D at 300 frames now uses the official `time_duration: [0, 10]`.** The notebook wrote `[0, (N−1)/30]`, i.e. `[0, 9.967]` at 300 frames. It now writes `[0, N/30]`.
+* **The GPU of the 4DGaussians paper is stated**: a single RTX 3090 (§5.1). An earlier version of this page said it was not.
+* **The 4DGaussians paper and its repository disagree on two settings.** The paper's appendix (A.1) says "The batch size in training is set to 1" and that the dense point cloud is downsampled "lower than 100k"; the repository's N3DV configs use batch 4 or 2, and its README says the cloud is downsampled "to less than 40000 points". This study follows the repository, which is what produces the runs.
+* **The per-frame COLMAP stage of Spacetime Gaussians is not shared between its two variants by default** (decision 3).
+
+Everything else on this page that cites a table, a file or an issue was found as cited, including the line numbers. The quoted sentences were checked on the README files, on the issue threads and on the LaTeX sources of the papers, not on rendered pages.
+
+### Sources
+
+* Wu et al., *4D Gaussian Splatting for Real-Time Dynamic Scene Rendering*, CVPR 2024 — [arXiv 2310.08528](https://arxiv.org/abs/2310.08528), Table 3, §5.1, appendix A.1 and Table 6; repository [`hustvl/4DGaussians`](https://github.com/hustvl/4DGaussians), `arguments/dynerf/`, `arguments/__init__.py`, `scene/gaussian_model.py`, `scripts/downsample_point.py`, README.
+* Yang et al., *Real-time Photorealistic Dynamic Scene Representation and Rendering with 4D Gaussian Splatting*, ICLR 2024 — [arXiv 2310.10642](https://arxiv.org/abs/2310.10642), Table 1; repository [`fudan-zvg/4d-gaussian-splatting`](https://github.com/fudan-zvg/4d-gaussian-splatting), `configs/dynerf/`, `scripts/n3v2blender.py`.
+* Li et al., *Spacetime Gaussian Feature Splatting*, CVPR 2024 — [arXiv 2312.16812](https://arxiv.org/abs/2312.16812), Appendix B Table 6 (the per-scene table next to it has the same Dynamic 3D Gaussians runs), the implementation details (training time), and the supplementary section *Longer Video Sequence*; repository [`oppo-us-research/SpacetimeGaussians`](https://github.com/oppo-us-research/SpacetimeGaussians), `configs/n3d_lite/`, `configs/n3d_full/`, `thirdparty/gaussian_splatting/arguments/__init__.py`, README, issues [#81](https://github.com/oppo-us-research/SpacetimeGaussians/issues/81) and [#119](https://github.com/oppo-us-research/SpacetimeGaussians/issues/119).
+* Luiten et al., *Dynamic 3D Gaussians: Tracking by Persistent Dynamic View Synthesis*, 3DV 2024 — [arXiv 2308.09713](https://arxiv.org/abs/2308.09713); repository [`JonathonLuiten/Dynamic3DGaussians`](https://github.com/JonathonLuiten/Dynamic3DGaussians).
+* Gao et al., *HiCoM*, NeurIPS 2024 — [arXiv 2411.07541](https://arxiv.org/abs/2411.07541), Table 6 (quotes the Dynamic 3D Gaussians N3DV values from the Spacetime Gaussians paper).
+* Li et al., *Neural 3D Video Synthesis from Multi-View Video* — dataset [README](https://github.com/facebookresearch/Neural_3D_Video): "cam00.mp4 is the center reference camera which we held out for testing".
+
+## How to record a decision
+
+When one is taken, do all three of:
+
+1. set the knob in cell 0.1 of the affected notebook, or pass it on the command line as `--set NAME=VALUE` to `scripts/run_benchmark.py` (see the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh));
+2. note the choice and the date in this file, in the table at the top and in the entry;
+3. update [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) if the choice changes what it states as fact.
+
+The window, the Spacetime Gaussians variant and the budget are recorded per run in the benchmark JSON (`num_frames`, `stg_model`, `max_iterations`), so a run always carries the decisions it was made under. **The GPU is not**: nothing in the JSON records which card produced a run, so it has to be written down here and repeated wherever the numbers are quoted.

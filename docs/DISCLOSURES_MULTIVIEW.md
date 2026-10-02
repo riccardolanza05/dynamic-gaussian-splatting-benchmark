@@ -1,51 +1,71 @@
 # Disclosures, multi-view study
 
-Things about the multi-view extension that a reader of the results needs to know, and that are **not** open questions: they are settled, they are in the code, and they do not need a decision. They are collected here because each of them would otherwise have to be rediscovered from the notebooks, and because two of them change how a number should be read.
+Things about the multi-view extension that a reader of the results needs to know, and that are **not** open questions: they are settled, they are in the code, and they do not need a decision. They are collected here because each of them would otherwise have to be rediscovered from the notebooks, and because several of them change how a number should be read.
 
-Open questions that *do* need a decision are in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md). The full methodology is in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md); this page is the short list of what to be careful about.
+Choices — taken or still open — are in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md). The full methodology is in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md); this page is the short list of what to be careful about.
 
 | # | Disclosure | Affects |
 |---|---|---|
-| [1](#1-lpips-uses-a-different-backend-from-the-monocular-study) | LPIPS backend differs from the monocular study | comparing LPIPS across the two studies |
-| [2](#2-the-segmentation-masks-of-notebook-04-are-an-addition-of-this-project) | Notebook 04's segmentation masks are ours, not the authors' | every result of Dynamic 3D Gaussians |
-| [3](#3-the-initial-point-cloud-may-be-smaller-than-upstreams) | The shared point cloud may be smaller than upstream's | 4DGaussians and 4DGS native-4D |
-| [4](#4-no-real-time-viewer-in-notebooks-0407) | No real-time viewer in notebooks 04–07 | nothing measured |
-| [5](#5-protocol-b-is-not-comparable-for-dynamic-3d-gaussians) | Protocol B truncates the sequence for Dynamic 3D Gaussians | the Protocol B table |
-| [6](#6-notebooks-0407-are-generated-not-hand-written) | Notebooks 04–07 are generated, 01–03 hand-written | reproducing the notebooks |
-| [7](#7-upstream-code-changed-in-two-notebooks) | Two notebooks patch upstream code, two do not | the "official code unchanged" claim |
-| [8](#8-corrections-made-before-the-first-run-2026-09-29) | Two errors corrected before the first run | notebook 05 batch size; the `ours_full` argument |
+| [1](#1-protocol-a-is-not-an-equal-budget-comparison) | Protocol A is not an equal-budget comparison | every Protocol A table |
+| [2](#2-spacetime-gaussians-at-300-frames-is-six-models) | Spacetime Gaussians at 300 frames is six models | its time, steps, images and storage in the main study |
+| [3](#3-lpips-uses-a-different-backend-from-the-monocular-study) | LPIPS backend differs from the monocular study | comparing LPIPS across the two studies |
+| [4](#4-the-initial-point-cloud-may-be-smaller-than-upstreams) | The shared point cloud may be smaller than upstream's | 4DGaussians and 4DGS native-4D |
+| [5](#5-notebooks-0507-are-generated-and-nothing-has-run-on-a-gpu) | Notebooks 05–07 are generated, and nothing has run on a GPU | reproducing the notebooks; trusting them before the first run |
+| [6](#6-upstream-code-changed-in-one-notebook) | One notebook patches upstream reader code | the "official code unchanged" claim |
+| [7](#7-corrections-made-before-the-first-run) | Corrections made before the first run | what earlier versions of these documents said |
+| [8](#8-a-method-was-set-aside-without-being-run) | A method was set aside without being run | what the study does not cover |
+| [9](#9-no-real-time-viewer-in-notebooks-0507) | No real-time viewer in notebooks 05–07 | nothing measured |
 
 ---
 
-## 1. LPIPS uses a different backend from the monocular study
+## 1. Protocol A is not an equal-budget comparison
 
-**What.** The monocular notebooks use each repository's bundled `lpipsPyTorch` (VGG), falling back to the pip `lpips` package only if it is unavailable. The four multi-view notebooks force the **pip `lpips` package** for all of them, with the `[-1, 1]` rescaling it expects, through `LPIPS_BACKEND = "lpips-pip"` in cell 0.1.
+**What.** In the monocular study Protocol A gave every method the same 30 000 steps. Here each method runs at the budget its authors use on N3DV: 3 000 + 14 000 steps for 4DGaussians, 30 000 for 4DGS native-4D, 30 000 for Spacetime Gaussians. The batch sizes are the official ones too, and they differ.
 
-**Why.** Dynamic 3D Gaussians does not bundle `lpipsPyTorch` at all. Leaving the backend on `"auto"` would have given three methods the bundled implementation and one the pip package, putting a systematic offset on one row of the LPIPS column — a difference between *measuring instruments*, presented as a difference between methods. Uniformity inside the study was worth more than continuity with the study next door.
+| Method | Steps | Views per step | Images seen in one Protocol A run |
+|---|---|---|---|
+| 4DGaussians | 17 000 | 2 (four scenes) or 4 (`coffee_martini`, `flame_salmon_1`) | 34 000 or 68 000 |
+| 4DGS native-4D | 30 000 | 4 | 120 000 |
+| Spacetime Gaussians | 30 000 per model | 2 | 60 000 per model |
 
-**How to read it.** LPIPS is comparable **within** the multi-view study and **within** the monocular study, and should not be compared **between** them. The two implementations are both VGG-backed and both use the official linear weights, so they are close, but they are not the same code and no calibration between them was measured. The resolved backend is written into each run's summary as `lpips_backend`, so a file always says which one produced its numbers.
+**How to read it.** A Protocol A number says "this method, run as its authors run it". It does not say "this method, given the same resources as the others": the images seen differ by up to a factor of 3.5. A method can be ahead because its authors chose a larger budget. The comparison at equal cost is what Protocol B, and the budget axes of the analysis (images seen, training time), are for.
 
-**Not a problem for:** PSNR, SSIM and the evaluation L1, which are computed by each repository's own modules in both studies, and were checked to be the same formulas (see [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4.1 #7).
+**The sampling follows the budget.** Each run is sampled about 30 times: every 500 fine steps for 4DGaussians, every 1 000 for the other two. The curves therefore have a comparable number of points but a different spacing in steps.
 
----
-
-## 2. The segmentation masks of notebook 04 are an addition of this project
-
-**What.** Dynamic 3D Gaussians needs a binary dynamic/static mask for every image. Its `seg` loss supervises them directly, and `is_fg` uses them to split the primitives into the ones the rigidity, rotation and isometry losses act on and the background ones that are anchored in place. Panoptic Sports ships those masks. **N3DV does not.**
-
-The notebook estimates them: per camera, the temporal median over the window is taken as the static background, and pixels differing from it by more than `SEG_DIFF_THRESHOLD` (0.08 in mean absolute difference) are called dynamic, after a morphological open/close and a minimum-component-area filter. A point of the initial cloud is labelled foreground when it projects inside the per-camera union-over-time mask in more than half of the cameras that see it.
-
-**Why it matters more than the other adaptations.** The masks are an *input to the method's loss*, not a preprocessing convenience. A mask that is too generous pulls static geometry into the deformable set; one that is too tight anchors moving geometry in place. **The mask quality bounds what this method can achieve here**, and that bound is a property of this preparation, not of the method.
-
-**How to read it.** A low result from notebook 04 is evidence about "Dynamic 3D Gaussians on N3DV with masks derived this way", not about the method in general, and certainly not a refutation of the authors' Panoptic numbers. The thresholds are in every run's benchmark JSON (`seg_diff_threshold`, `seg_min_area_ratio`), and the preparation cell prints the fraction of dynamic pixels per camera — a sanity check worth reading before trusting a run: a scene where that fraction is near 0% or near 100% has a broken mask, not a hard scene.
-
-**Also from the same source:** the authors state that their data-preparation code and their novel-view evaluation code have **not been released**. Both had to be written for this study. The world frame is another consequence: `get_loss` contains a floor loss that assumes a known ground plane, and `get_dataset` hard-codes `near = 1.0`, so the converter infers an orientation, a floor height and a scale that Panoptic simply has. See [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §5.2.
+**What was given up.** The table "at equal steps" of the monocular study has no counterpart. It can be rebuilt for 4DGaussians alone by rerunning notebook 05 with a longer budget ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §6).
 
 ---
 
-## 3. The initial point cloud may be smaller than upstream's
+## 2. Spacetime Gaussians at 300 frames is six models
 
-**What.** Notebooks 04, 05 and 06 share one COLMAP reconstruction of the first frame, so that the initialisation is not a hidden difference between the three methods. The stage asks for dense fusion (`patch_match_stereo` + `stereo_fusion`); when the Colab image ships a COLMAP built without CUDA that step cannot run and the stage falls back to the sparse triangulated points, recording `init_point_cloud: "sparse"`.
+**What.** The method covers a sequence in blocks of 50 frames. In the main study a scene is six independent trainings, as in its paper, and the benchmark JSON of the scene is their merge: quality is the mean over the 300 test views; training time, steps, images seen, number of Gaussians and storage are **sums** over the six; peak VRAM is the maximum.
+
+**How to read it.**
+
+* Its training time and storage are those of everything needed to render the 300 frames, which is the fair figure to set next to a method that needs one model.
+* Its `total_iterations` is 180 000 and its `images_seen` 360 000, but no single model has trained for more than 30 000 steps. On a "same number of images" comparison each of its models has seen a sixth of the common budget, so that comparison understates it at 300 frames; the 50-frame study, where it is one model, is the place to read it.
+* **It is read at two points.** Its official flow evaluates one snapshot per scene (`test_iteration`: 25 000 on four scenes, 10 000 on `coffee_martini`, 12 000 on `flame_salmon_1`), not the end of the 30 000-step run. Both readings are reported; the snapshot is the one comparable with the paper.
+* **It appears as up to two rows**, `lite` and `full`. They are two separate sets of runs of the same notebook.
+
+The per-block JSON files are kept under `<run>/blocks/`, so every merged number can be recomputed.
+
+---
+
+## 3. LPIPS uses a different backend from the monocular study
+
+**What.** The monocular notebooks use each repository's bundled `lpipsPyTorch` (VGG), falling back to the pip `lpips` package only if it is unavailable. The three multi-view notebooks force the **pip `lpips` package**, with the `[-1, 1]` rescaling it expects, through `LPIPS_BACKEND = "lpips-pip"` in cell 0.1.
+
+**Why.** The choice was made when Dynamic 3D Gaussians was part of the study: that repository does not bundle `lpipsPyTorch`, so leaving the backend to each repository would have put one method on a different implementation. The method has since been set aside, and the original reason with it. The setting was kept because it guarantees one implementation by construction; whether to go back to the bundled package is an open, low-stakes choice ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §9).
+
+**How to read it.** LPIPS is comparable **within** the multi-view study and **within** the monocular study, and should not be compared **between** them. The two implementations are both VGG-backed and both use the official linear weights, so they are close, but they are not the same code and no calibration between them was measured. The resolved backend is written into each run's summary as `lpips_backend`.
+
+**Not affected:** PSNR, SSIM and the evaluation L1, which are computed by each repository's own modules in both studies.
+
+---
+
+## 4. The initial point cloud may be smaller than upstream's
+
+**What.** Notebooks 05 and 06 share one COLMAP reconstruction of the first frame, so that the initialisation is not a hidden difference between the two methods. The stage asks for dense fusion (`patch_match_stereo` + `stereo_fusion`); when the machine's COLMAP is built without CUDA that step cannot run and the stage falls back to the sparse triangulated points, recording `init_point_cloud: "sparse"`.
 
 **Why it matters.** Each method's point budget is a **cap, not a target**. `readNerfSyntheticInfo` subsamples only `if pcd.points.shape[0] > num_pts`; `downsample_point.py` only shrinks a cloud that is too large. Nothing upsamples. So a sparse fallback means 4DGS native-4D starts from far fewer than its nominal 300 000 primitives and 4DGaussians from fewer than 40 000 — a handicap relative to what their authors run, applied to those two methods and not to Spacetime Gaussians, which builds its own per-frame clouds.
 
@@ -53,58 +73,66 @@ The notebook estimates them: per camera, the temporal median over the window is 
 
 ---
 
-## 4. No real-time viewer in notebooks 04–07
+## 5. Notebooks 05–07 are generated, and nothing has run on a GPU
 
-**What.** Notebooks 01–03 have a WebSocket streaming viewer (section 6 or 7) that renders the trained model interactively in the Colab output. Notebooks 04–07 do not: their Part 2 is section 5 (rendering and final metrics) and section 6 (MP4 export of the held-out view, side by side with the ground truth).
+**What.** Notebooks 01–03 were written by hand. Notebooks 05–07 are assembled by a small generator, kept **locally only** at `notebooks/_build/` and deliberately excluded from the repository (`.gitignore`).
 
-**Why.** The viewer contributes nothing to any measurement, it is the most repository-specific code in the monocular notebooks, and an N3DV model at 1352×1014 is a poor fit for streaming from a free Colab runtime. Section 5 and section 6 cover everything the benchmark needs: an independent recomputation of the metrics from the saved model, and a visual check of the reconstruction over the whole window.
+**Why a generator.** The three multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property — along with the configuration, path-resolution, dataset, driver and reporting cells. Hand-maintained copies of a 300-line monitor drift; a generator cannot.
 
-**Consequence:** none for the results. It is listed only because it is a visible difference in structure between the two families of notebooks, and Part 2 of the multi-view notebooks says so in its own header.
+**What it guarantees.** The generator ships with a check suite (238 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
 
----
-
-## 5. Protocol B is not comparable for Dynamic 3D Gaussians
-
-**What.** Protocol B stops training as soon as the evaluation L1 reaches a per-scene target. For the three methods that optimise the whole window at once, stopping early gives a less converged model *of the whole window* — exactly the intended meaning of "what does this quality cost?".
-
-Dynamic 3D Gaussians walks the sequence frame by frame, so its test curve improves as the window is **covered**, not as one model converges. Stopping early therefore **truncates the sequence**: the saved model represents the frames reached so far and nothing after them.
-
-**How to read it.** `timesteps_done` in the last entry of the run's JSON says how many frames the model actually covers. A Protocol B figure for this method is not comparable with the other three, and **Protocol A is the primary comparison for it**. The machinery works and the run produces a valid file — it just answers a different question.
-
-This is not a defect of the implementation; it is what "equal quality" means for a method whose cost is spent per frame. It is also why the Protocol B targets and the frame-by-frame budget interact: see [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §1 and [PROTOCOL_B_CALIBRATION.md](PROTOCOL_B_CALIBRATION.md).
-
----
-
-## 6. Notebooks 04–07 are generated, not hand-written
-
-**What.** Notebooks 01–03 were written by hand. Notebooks 04–07 are assembled by a small generator, kept **locally only** at `notebooks/_build/` and deliberately excluded from the repository (`.gitignore`).
-
-**Why a generator.** The four multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property rather than a claim — along with the configuration, path-resolution, dataset, driver and reporting cells. Four hand-maintained copies of a 300-line monitor drift; a generator cannot.
-
-**What it guarantees.** The generator ships with a check suite (268 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the four**, that each glue block defines all ten hooks the core calls, that cells 0.1, 0.2 and 3 execute standalone, that a run from a different frame window is never silently reused, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
-
-**What it does not guarantee.** Nothing requiring CUDA, COLMAP or the N3DV dataset was executed: the converters, the COLMAP invocations, the rasterizers and every `_render_pair` against a real model are **unverified by execution**. The notebooks are checked as structurally sound and consistent with one another, not as runnable end to end on Colab.
+**What it does not guarantee.** Nothing requiring CUDA, COLMAP or the N3DV dataset was executed: the converters, the COLMAP invocations, the rasterizers and every `_render_pair` against a real model are **unverified by execution**. The notebooks are checked as structurally sound and consistent with one another, not as runnable end to end. The first smoke run is the first real test.
 
 **Consequence for the repository.** Since the generator is not published, the committed `.ipynb` files are the source of truth for anyone else; the byte-identity of the monitor core remains inspectable in them (it is delimited by `# === BENCHMARK MONITOR CORE ===` markers) but is not automatically re-checkable by a third party.
 
 ---
 
-## 7. Upstream code changed in two notebooks
+## 6. Upstream code changed in one notebook
 
-The project's rule is that each method runs its **official training code**, modified only by the monitor hook appended to `train.py`, by configuration overrides and by environment fixes. In the multi-view study that rule holds for notebooks 06 and 07 with nothing further. Two notebooks go beyond it, and both changes are inert without the environment variable that drives them:
+The project's rule is that each method runs its **official training code**, modified only by the monitor hook appended to `train.py`, by configuration overrides and by environment fixes. In the multi-view study that rule holds for notebooks 06 and 07 with nothing further. One notebook goes beyond it:
 
-* **Notebook 05 (4DGaussians)** patches **reader code**: `scene/neural_3D_dataset_NDC.py` hard-codes `countss = 300` and `scene/dataset_readers.py` hard-codes `maxtime=300`; both are made to read `BENCH_N3DV_FRAMES`, defaulting to 300. Without the patch a 50-frame run would timestamp its frames as `idx/300`, compressing the window into the first sixth of the temporal axis of the HexPlane grid while the other three methods span their full range — the run would not be comparable. The other three take the window from a configuration value, so no patch is needed there. Pristine copies are kept as `*.orig`.
-* **Notebook 04 (Dynamic 3D Gaussians)** patches **training-loop code**: the constant `10000 if is_initial_timestep else 2000` is made to read two environment variables defaulting to those values, so that the budget knob of [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §1 reaches the loop. It also replaces `helpers.o3d_knn` with a `scipy.spatial.cKDTree` implementation returning the same two arrays, because Open3D has no wheel for the Python version Colab ships, and adds a `train_one.py` launcher because `train.py`'s `__main__` hard-codes the six Panoptic Sports sequences.
+* **Notebook 05 (4DGaussians)** patches **reader code**: `scene/neural_3D_dataset_NDC.py` hard-codes `countss = 300` and `scene/dataset_readers.py` hard-codes `maxtime=300`; both are made to read `BENCH_N3DV_FRAMES`, defaulting to 300. **In the main study the value is 300, i.e. the upstream one**, and the patch is inert. It matters for the 50-frame study: without it a 50-frame run would timestamp its frames as `idx/300`, compressing the window into the first sixth of the temporal axis of the HexPlane grid. Pristine copies are kept as `*.orig`.
 
-Everything else — losses and their weights, densification, learning rates, optimisers, stage handling, per-frame initialisation — is upstream in all four notebooks. The full list, with the reason for each, is in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §5.
+Everything else — losses and their weights, densification, learning rates, optimisers, stage handling — is upstream in all three notebooks. The full list of additions is in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §5.
 
 ---
 
-## 8. Corrections made before the first run (2026-09-29)
+## 7. Corrections made before the first run
 
-Both were found by re-reading the upstream repositories. No run had been made, so no result is affected.
+All were found by re-reading the upstream repositories and papers. No run had been made, so no result is affected. They are listed because earlier versions of these documents, in the history of the repository, state the opposite.
 
-* **Notebook 05 forced `batch_size = 4` on every scene.** The official files `arguments/dynerf/{cook_spinach,cut_roasted_beef,flame_steak,sear_steak}.py` of 4DGaussians set `batch_size=2`, and only `coffee_martini` and `flame_salmon_1` inherit 4 from `default.py`. The derived `<scene>_run.py` overwrote that. This contradicted the rule both studies follow: the per-scene batch is part of a method's tuning and is kept, and declared through `images_seen` ([METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §4.2 #1). The override is removed. The batch is now read back from the resolved official config, so `images_seen` and the `batch_size` field of the JSON carry the per-scene value, as notebook 06 already did.
-* **The claim that `ours_full` cannot save its decoder was wrong.** The earlier documents said that the released `save_ply()` of Spacetime Gaussians' `oursfull.py` has the decoder save commented out. The commented line is in `ourslite.py`, where there is no decoder to save. In `oursfull.py` the decoder has been written to `point_cloud.pt` since the first commit, and every `load_ply` variant reads it back. Notebook 07's storage report already counted `point_cloud.pt`, and its training renderer already applies the decoder, so `ours_full` works without any change to upstream code. The argument for `ours_lite` that remains is homogeneity alone ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §3).
+### 2026-09-29
 
-In the same pass, three settings of cell 0.1 that the documentation tells you to change with `--set` were plain literals, so the command line had no effect on them: `EXTRA_TRAIN_ARGS`, `STG_MODEL` (notebook 07) and `D3DG_BUDGET_MODE`, together with its three companion budget values (notebook 04). All of them now read `BENCH_<NAME>`, and the smoke tests check it. `ours_full` runs also get their own folders (`<scene>_f50_iters30000_full`), so switching the variant can never reuse or overwrite a `lite` run.
+* **Notebook 05 forced `batch_size = 4` on every scene.** The official files `arguments/dynerf/{cook_spinach,cut_roasted_beef,flame_steak,sear_steak}.py` of 4DGaussians set `batch_size=2`, and only `coffee_martini` and `flame_salmon_1` inherit 4 from `default.py`. The override is removed; the batch is read back from the resolved official config.
+* **The claim that `ours_full` cannot save its decoder was wrong.** The commented-out `torch.save` is in `ourslite.py` (line 391), where there is no decoder to save. In `oursfull.py` the decoder is written to `point_cloud.pt` (line 411) and every `load_ply` variant reads it back. `ours_full` works without any change to upstream code.
+* **Three settings that the documentation said to change with `--set` were plain literals**: `EXTRA_TRAIN_ARGS`, `STG_MODEL`, and the budget knobs of the notebook that has since been removed. They now read `BENCH_<NAME>`.
+
+### 2026-10-02 (full re-read of every cited source)
+
+* **Spacetime Gaussians' official test snapshot is per scene.** The documents said its N3DV configs evaluate the 25 000-step snapshot. That is true of four scenes; `coffee_martini` uses 10 000 and `flame_salmon_1` 12 000 (`test_iteration` in `configs/n3d_lite/` and `configs/n3d_full/`). The notebook now records each scene's value and the analysis reads the run there.
+* **4DGS native-4D at 300 frames did not use the official time span.** The notebook wrote `time_duration: [0, (N−1)/30]`, i.e. `[0, 9.967]` at 300 frames; the official configs have `[0.0, 10.0]`. It now writes `[0, N/30]`, which is the official value at 300 frames.
+* **The GPU of the 4DGaussians paper is stated** (a single RTX 3090, §5.1); the documents said it was not.
+* **The 4DGaussians paper and repository disagree** on the batch size (1 in the paper's appendix, 4 or 2 in the N3DV configs) and on the point-cloud cap (100 000 in the paper, 40 000 in the README and the script). The runs follow the repository.
+* **The per-frame COLMAP models of Spacetime Gaussians are not reused between its two variants by default**, because a finished scene frees its data. The documents said the stage was shared.
+* **The disk estimate for the extracted frames was too high** (15–20 GB for 50 frames). At 2–3 MB per PNG it is roughly 2–3 GB for 50 frames and 13–18 GB for 300. Still an estimate; the runs record the real figure.
+* **`--set MAX_ITERATIONS=…` had no effect**: the budget was a literal in cell 0.1. It now reads the environment, which a short smoke run needs.
+
+Everything else that cites a table, a file, a line or an issue was found as cited. Quoted sentences were checked on the README files, the issue threads and the LaTeX sources of the papers.
+
+---
+
+## 8. A method was set aside without being run
+
+Dynamic 3D Gaussians (Luiten et al.) was part of the study, with its own notebook (`04`), until 2026-10-02. It was set aside on the strength of published numbers and of what including it required, **not** of any measurement made here: this project never ran it. The reasons are in [METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §1.1 and, with the numbers, in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md#dynamic-3d-gaussians-set-aside-2026-10-02).
+
+**How to read it.** The multi-view study says nothing about that method, good or bad. The numbers quoted to justify the choice come from another group's paper, on their protocol and with their tuning. The notebook, which was never executed, remains in the history of the repository.
+
+---
+
+## 9. No real-time viewer in notebooks 05–07
+
+**What.** Notebooks 01–03 have a WebSocket streaming viewer that renders the trained model interactively. Notebooks 05–07 do not: their Part 2 is section 5 (rendering and final metrics) and section 6 (MP4 export of the held-out view, side by side with the ground truth).
+
+**Why.** The viewer contributes nothing to any measurement, it is the most repository-specific code in the monocular notebooks, and an N3DV model at 1352×1014 is a poor fit for streaming from a cloud runtime.
+
+**Consequence:** none for the results. One related gap is real: **rendering speed (FPS) is not measured** by this benchmark, in either study.
