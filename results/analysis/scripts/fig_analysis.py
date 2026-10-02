@@ -39,7 +39,7 @@ for ax,(col,tit,fmt,low) in zip(axes.ravel(), specs):
     ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=8, color=INK2)
     ax.set_title(tit+("  (lower is better)" if low else ""), color=INK, loc="left", fontweight="bold", fontsize=9.5)
     ax.tick_params(length=0); [sp.set_visible(False) for sp in ax.spines.values()]
-fig.suptitle("Per-scene comparison at an equal iteration budget — colour = rank within the scene (dark = best)",
+fig.suptitle("Per-scene comparison %s — colour = rank within the scene (dark = best)" % PA_AT,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.03)
 fig.tight_layout(); savefig(fig,"25_heatmap_iso_iterations", CAVEAT)
 
@@ -57,12 +57,14 @@ for i in range(len(ORDER)):
 ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES], fontsize=8.5, color=INK2)
 ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=9, color=INK2); ax.tick_params(length=0)
 [sp.set_visible(False) for sp in ax.spines.values()]
-fig.suptitle("PSNR gap to the best method on each scene (dB) — equal-iteration budget",
+fig.suptitle("PSNR gap to the best method on each scene (dB) — %s" % PA_BUDGET,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.06)
 fig.tight_layout(); savefig(fig,"26_psnr_gap_to_best", CAVEAT)
 
 # ---- 27: peak & degradation analysis ----
-fig, axes = plt.subplots(1,3, figsize=(13.2,4.1), sharey=True)
+fig, axes = plt.subplots(1,len(ORDER), figsize=(13.2 if len(ORDER)<=3 else 4.4*len(ORDER),4.1),
+                         sharey=True, squeeze=False)
+axes = axes[0]
 for ax,m in zip(axes,ORDER):
     for s in SCENES:
         d = cur(m,s,"iterations")
@@ -76,13 +78,13 @@ for ax,m in zip(axes,ORDER):
     ax.set_xlabel("Training iterations", fontsize=8)
     ax.xaxis.set_major_formatter(lambda v,p: f"{v/1000:g}k" if v>=1000 else f"{v:g}")
 axes[0].set_ylabel("PSNR − peak PSNR of the run (dB)")
-fig.suptitle("Post-peak behaviour: 4DGS native-4D peaks within the first thousands of iterations and then degrades",
+fig.suptitle(TITLE27,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.02)
 fig.tight_layout(); savefig(fig,"27_peak_and_degradation", CAVEAT+" One line per scene.")
 
 # ---- 28: peak iteration vs drop at 30k ----
 fig, axes = plt.subplots(1,2, figsize=(12.6,4.0))
-x = np.arange(len(SCENES)); w=0.26
+x = np.arange(len(SCENES)); w=BAR_W
 for i,m in enumerate(ORDER):
     pk  = [val(IT,m,s,"best_psnr_iter") for s in SCENES]
     drp = [val(IT,m,s,"best_psnr")-val(IT,m,s,"final_psnr") for s in SCENES]
@@ -117,7 +119,7 @@ for k,(th,ax) in enumerate(zip([25,30],axes)):
     ax.set_ylabel("Iterations"); ax.grid(True, axis="y", alpha=0.9); ax.set_axisbelow(True)
     ax.set_title(f"Iterations to first reach PSNR ≥ {th} dB", color=INK, loc="left", fontweight="bold", fontsize=10)
 method_legend(fig, y=1.06)
-fig.tight_layout(); savefig(fig,"29_iterations_to_psnr_threshold", CAVEAT+" Evaluation grid: every 1000 iterations.")
+fig.tight_layout(); savefig(fig,"29_iterations_to_psnr_threshold", CAVEAT+GRID_NOTE)
 
 # ---- 30: quality vs cost scatter (iso-iterations) ----
 fig, axes = plt.subplots(1,2, figsize=(13.0,4.6))
@@ -137,10 +139,10 @@ for m in ORDER:
         axes[1].scatter(t/60, q, s=60, color=C[m], alpha=0.85, edgecolor=SURF, linewidth=1.2, zorder=3)
         axes[1].annotate(SCENE_LABEL[s], (t/60,q), fontsize=6.5, color=MUTED,
                          xytext=(4,4), textcoords="offset points")
-axes[0].set_title("Equal-iteration budget — marker size ∝ peak VRAM", color=INK, loc="left", fontweight="bold", fontsize=10)
+axes[0].set_title("%s — marker size ∝ peak VRAM" % PA_BUDGET_CAP, color=INK, loc="left", fontweight="bold", fontsize=10)
 axes[1].set_title("Equal-L1-target budget", color=INK, loc="left", fontweight="bold", fontsize=10)
 for ax in axes:
-    ax.set_xlabel("Training time (minutes, Tesla T4)"); ax.set_ylabel("Best PSNR (dB)")
+    ax.set_xlabel("Training time (minutes, %s)" % GPU); ax.set_ylabel("Best PSNR (dB)")
     ax.grid(True, alpha=0.9); ax.set_axisbelow(True)
 method_legend(fig, y=1.06)
 fig.suptitle("Quality against compute cost", color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.14)

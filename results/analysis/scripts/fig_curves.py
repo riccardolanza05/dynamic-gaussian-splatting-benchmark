@@ -34,7 +34,7 @@ def facet(metric, ylabel, title, name, mode="iterations", xcol="iter_total",
     fig.tight_layout()
     savefig(fig, name, CAVEAT)
 
-facet("psnr","PSNR (dB)","Reconstruction quality vs training iterations — D-NeRF monocular scenes",
+facet("psnr","PSNR (dB)",TITLE01,
       "01_psnr_vs_iterations", hline=30.0)
 facet("ssim","SSIM","Structural similarity vs training iterations","02_ssim_vs_iterations")
 facet("lpips","LPIPS (VGG)","Perceptual error vs training iterations (lower is better)",
@@ -43,7 +43,7 @@ facet("eval_l1_loss","Eval L1 loss","Evaluation L1 loss vs training iterations (
       "04_l1_vs_iterations", logy=True)
 facet("num_gaussians","# Gaussians","Number of Gaussian primitives vs training iterations",
       "05_gaussians_vs_iterations", logy=True)
-facet("training_time_s","Training time (s)","Cumulative training time vs iterations (Tesla T4)",
+facet("training_time_s","Training time (s)","Cumulative training time vs iterations (%s)" % GPU,
       "06_traintime_vs_iterations")
 facet("train_batch_loss","Train batch loss","Training batch loss vs iterations","07_trainloss_vs_iterations", logy=True)
 
@@ -68,7 +68,7 @@ def facet_xy(xm, ym, xlabel, ylabel, title, name, mode="iterations", logx=False)
     method_legend(fig, extra=[Line2D([],[],color=MUTED,lw=2,ls="--",label="partial run")], y=1.025)
     fig.tight_layout(); savefig(fig, name, CAVEAT)
 
-facet_xy("training_time_s","psnr","Training time (s, Tesla T4)","PSNR (dB)",
+facet_xy("training_time_s","psnr","Training time (s, %s)" % GPU,"PSNR (dB)",
          "Quality vs compute budget — PSNR against wall-clock training time","08_psnr_vs_traintime")
 facet_xy("num_gaussians","psnr","# Gaussian primitives","PSNR (dB)",
          "Quality vs model size — PSNR against number of Gaussians","09_psnr_vs_gaussians", logx=True)

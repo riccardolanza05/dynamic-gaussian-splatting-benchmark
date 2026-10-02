@@ -21,7 +21,9 @@ SURF="#fcfcfb"; INK="#0b0b0b"; INK2="#52514e"; MUTED="#898781"; GRID="#e1e0d9"; 
 from study import (STUDY, DATASET, C, ORDER, LABEL, SCENES, SCENE_LABEL,
                    FAIR, PARTIAL, NOT_EVAL, CAVEAT, FAIRNOTE, RADARNOTE,
                    MISSING_SCENE_FILL, HIGHLIGHT_SCENES, IMG_BUDGET,
-                   NMETHODS_WORD, MEANNOTE, NOTE36)
+                   NMETHODS_WORD, MEANNOTE, NOTE36, VARIANT_GROUPS, GPU, PA_BUDGET,
+                   PA_BUDGET_CAP, PA_RUNS, PA_AT, PA_TOTAL, STEP_BUDGET, TITLE01, TITLE27,
+                   NOTE39, SAMPLE_NOTE, TIME_NOTE, BSNOTE, NOTE43, GRID_NOTE, NOTE33)
 
 plt.rcParams.update({
  "figure.facecolor":SURF, "axes.facecolor":SURF, "savefig.facecolor":SURF,
@@ -42,6 +44,21 @@ if MISSING_SCENE_FILL:
 # total iterations including 4DGaussians coarse stage
 curves["iter_total"] = curves["total_iterations"].fillna(curves["iteration"])
 # PARTIAL and NOT_EVAL come from study.py; every figure honours them automatically.
+
+# Variants of one method (Spacetime Gaussians lite / full) are siblings: one that was not
+# run at all is dropped from the figures, so a study with a single variant shows only it.
+# With no run of any sibling the first one is kept, as the placeholder of the method.
+# ORDER is edited in place, so every script that imported it sees the same list.
+_ran = set(runs.method_short.dropna()) if "method_short" in runs.columns else set()
+for _group in VARIANT_GROUPS:
+    _have = [m for m in _group if m in _ran] or _group[:1]
+    for _m in _group:
+        if _m not in _have and _m in ORDER:
+            ORDER.remove(_m)
+
+# Width of one bar in the grouped-bar figures: 0.26 for up to three methods (the layout
+# the monocular figures were drawn with), narrower when there are more.
+BAR_W = 0.26 if len(ORDER) <= 3 else 0.8 / len(ORDER)
 
 # FAIR is the set of scenes the aggregates average over, and it is a claim: every method
 # completed every scene in it. A half-finished loop would otherwise average over scenes a

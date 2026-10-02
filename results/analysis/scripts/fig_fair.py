@@ -49,12 +49,11 @@ fig.suptitle("The same runs, three budget axes — the ranking depends on what y
 method_legend(fig,extra=[Line2D([],[],color=MUTED,lw=1,ls=":",label="common budget used in figures 40–41")],y=0.995)
 fig.tight_layout()
 savefig(fig,"39_three_budget_axes",
- "Rows are ordered by the per-scene batch size of 4DGS-fudan (1, 2, 8, 24); the other two methods always use batch 1. "
- "Columns 2 and 3 are on a log axis because the sample and time budgets span an order of magnitude between methods. "+CAVEAT)
+ NOTE39+CAVEAT)
 
 # ---- 40: equal number of training samples ----
 def grouped(getter,ylabel,title,name,fmt="{:.2f}",lower=False,note="",annotate=True,logy=False):
-    x=np.arange(len(SCENES)); w=0.26
+    x=np.arange(len(SCENES)); w=BAR_W
     fig,ax=plt.subplots(figsize=(12.6,4.2)); nan=[]
     for i,m in enumerate(ORDER):
         for xi,s in zip(x+(i-(len(ORDER)-1)/2)*w,SCENES):
@@ -71,10 +70,7 @@ def grouped(getter,ylabel,title,name,fmt="{:.2f}",lower=False,note="",annotate=T
                  color=INK,fontsize=12.5,fontweight="bold",x=0.012,ha="left",y=1.115)
     method_legend(fig,y=1.045); fig.tight_layout(); savefig(fig,name,note)
 
-SAMPLE_NOTE=("Every method is stopped after the same number of training images (30 000), which is the whole "
-             "Protocol-A budget of the batch-1 methods. Under this budget the partial 4DGS-fudan runs are complete: "
-             "at 30 000 samples T-Rex has run 1 250 of its 6 000 recorded steps and Jumping Jacks 1 875 of 15 000. "
-             "Lego stays unavailable for 4DGS-fudan. Values are linearly interpolated on the 1 000-iteration evaluation grid.")
+# SAMPLE_NOTE and TIME_NOTE (what the common budgets of this study are) come from study.py.
 grouped(lambda m,s: at(m,s,"images_seen",IMG_BUDGET,"psnr"),"PSNR (dB)",
         "Equal number of training samples — PSNR after 30 000 training images","40_iso_samples_psnr",
         note=SAMPLE_NOTE)
@@ -83,15 +79,12 @@ grouped(lambda m,s: at(m,s,"images_seen",IMG_BUDGET,"iter_total"),"Optimisation 
         fmt="{:.0f}",lower=True,note=SAMPLE_NOTE)
 
 # ---- 42: equal wall-clock ----
-TIME_NOTE=("Each scene is compared at the same wall-clock budget: the time the fastest method needed to finish its "
-           "30 000 steps on that scene (756 s to 2 284 s, always set by 4DGaussians). This is the budget a fixed "
-           "Colab T4 session actually buys. "+CAVEAT)
 grouped(lambda m,s: at(m,s,"training_time_s",tbudget(s),"psnr"),"PSNR (dB)",
         "Equal wall-clock budget — PSNR when the fastest method finishes its run","42_iso_time_psnr",
-        note=TIME_NOTE)
+        note=TIME_NOTE+CAVEAT)
 
 # ---- 43: throughput per 1000 samples, not per 1000 steps ----
-fig,axes=plt.subplots(1,2,figsize=(13.0,4.2)); x=np.arange(len(SCENES)); w=0.26
+fig,axes=plt.subplots(1,2,figsize=(13.0,4.2)); x=np.arange(len(SCENES)); w=BAR_W
 for i,m in enumerate(ORDER):
     per_it,per_img=[],[]
     for s in SCENES:
@@ -109,13 +102,15 @@ for ax,t,yl in zip(axes,["Seconds per 1 000 optimisation steps","Seconds per 1 0
 method_legend(fig,y=1.06); fig.tight_layout()
 savefig(fig,"43_throughput_steps_vs_samples",
  "Left: cost of a step. Right: the same runs priced per training image — the batch-corrected throughput. "
- "The gap between the two panels is exactly the batch size of 4DGS-fudan on that scene. "+CAVEAT)
+ +NOTE43+CAVEAT)
 
 # ---- 44: who wins under which budget ----
 from matplotlib.colors import ListedColormap
-budgets=[("Equal steps\n(30 000 iterations)", lambda m,s: at(m,s,"iter_total",30000,"psnr")),
+budgets=[("Equal steps\n(30 000 iterations)", lambda m,s: at(m,s,"iter_total",STEP_BUDGET,"psnr")),
          ("Equal samples\n(30 000 images)",   lambda m,s: at(m,s,"images_seen",IMG_BUDGET,"psnr")),
          ("Equal wall-clock\n(fastest method's run)", lambda m,s: at(m,s,"training_time_s",tbudget(s),"psnr"))]
+# A study whose methods share no step budget has no "equal steps" row.
+if STEP_BUDGET is None: budgets=budgets[1:]
 fig,ax=plt.subplots(figsize=(12.4,3.6))
 Z=np.zeros((len(budgets),len(SCENES))); lab=[[""]*len(SCENES) for _ in budgets]
 for i,(bn,f) in enumerate(budgets):
@@ -128,14 +123,15 @@ for i,(bn,f) in enumerate(budgets):
         gap=srt[0]-srt[1] if len(srt)>1 else np.nan
         lab[i][j]=f"{win}\n+{gap:.2f} dB" if not np.isnan(gap) else win
 cmap=ListedColormap([C[m] for m in ORDER])
-ax.imshow(np.ma.masked_invalid(Z),cmap=cmap,vmin=-0.5,vmax=2.5,aspect="auto",alpha=.88)
+ax.imshow(np.ma.masked_invalid(Z),cmap=cmap,vmin=-0.5,vmax=len(ORDER)-0.5,aspect="auto",alpha=.88)
 for i in range(len(budgets)):
     for j in range(len(SCENES)):
         ax.text(j,i,lab[i][j],ha="center",va="center",fontsize=7.4,color="#ffffff",fontweight="bold")
 ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES],fontsize=8.5,color=INK2)
 ax.set_yticks(range(len(budgets))); ax.set_yticklabels([b[0] for b in budgets],fontsize=8.5,color=INK2)
 ax.tick_params(length=0); [sp.set_visible(False) for sp in ax.spines.values()]
-fig.suptitle("Best PSNR under three definitions of the same budget — and by how much",
+fig.suptitle("Best PSNR under %s definitions of the same budget — and by how much"
+             % {2:"two",3:"three"}[len(budgets)],
              color=INK,fontsize=12.5,fontweight="bold",x=0.012,ha="left",y=1.06)
 fig.tight_layout()
 savefig(fig,"44_winner_by_budget_definition",

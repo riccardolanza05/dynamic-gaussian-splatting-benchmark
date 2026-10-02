@@ -37,22 +37,39 @@ which needs internet the first time it is opened. To get a fully offline copy ba
 ## Two studies in one pipeline
 
 The same scripts analyse the **monocular** study (D-NeRF, notebooks `01`-`03`) and the
-**multi-view** one (Neural 3D Video, notebooks `04`-`07`). The two are reported separately,
+**multi-view** one (Neural 3D Video, notebooks `05`-`07`). They are reported separately,
 so everything that names a method or a scene — folders, labels, colours, scene lists, the
-`FAIR` set, the `PARTIAL` and `NOT_EVAL` flags, the caveat text — lives in `study.py` and is
-selected by `GS_STUDY`, while the data root is `GS_ROOT` as before:
+`FAIR` set, the `PARTIAL` and `NOT_EVAL` flags — and every sentence a figure prints about
+the protocol (the caveat, how Protocol A is called, the GPU, the common budgets) lives in
+`study.py` and is selected by `GS_STUDY`, while the data root is `GS_ROOT` as before:
 
 ```bash
 ./run_all.sh                                               # monocular (the default)
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh       # multi-view, 50 frames
-GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_full ./run_all.sh  # multi-view, 300 frames
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh       # multi-view, 300 frames (main)
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_f50 ./run_all.sh   # multi-view, 50 frames
 ```
 
 Every output — tables, the 46 figures, `dashboard_data.json` and `benchmark_dashboard.html` —
-is written under `$GS_ROOT/analysis/` (`$GS_ROOT/analysis_f300/` for `n3dv_full`), so the
+is written under `$GS_ROOT/analysis/` (`$GS_ROOT/analysis_f50/` for `n3dv_f50`), so the
 studies never overwrite each other. The two N3DV studies read the same method folders and
-keep only the runs of their own window (`NUM_FRAMES` in `study.py`); `n3dv_full` has no
-Dynamic 3D Gaussians and no Protocol B runs.
+keep only the runs of their own window (`NUM_FRAMES` in `study.py`); the 300-frame one has
+no Protocol B runs.
+
+Three things are specific to the multi-view studies:
+
+* **One folder, two methods.** Spacetime Gaussians is benchmarked in two variants whose
+  runs share `spacetime_gaussians_output/`. `VARIANTS` in `study.py` names the config key
+  that tells them apart (`stg_model`), and each variant becomes its own row and colour. A
+  variant with no run is dropped from the figures (`VARIANT_GROUPS`).
+* **No common step budget.** Protocol A runs each method at its official budget, so
+  `STEP_BUDGET` is `None` and the "equal steps" row of figure 44 is left out; the titles
+  say "official budget of each method" where the monocular ones say "equal-iteration".
+* **The official readout.** `tables/table_official_readout.csv` reads each Protocol A run
+  at the step its authors read it — recorded by the notebook as `official_test_iteration`
+  (Spacetime Gaussians, per scene) or `official_iterations` — next to its end and its
+  best, with the preparation time and the disk of the scene.
+
+The grouped-bar figures size their bars from the number of methods, so four rows fit.
 With `GS_STUDY` unset the pipeline behaves exactly as it did before `study.py` existed.
 
 ## Adding a new method or scene
@@ -69,7 +86,8 @@ With `GS_STUDY` unset the pipeline behaves exactly as it did before `study.py` e
 
 Colours come from a colourblind-safe categorical palette; the first three slots
 (blue / orange / aqua) are validated for all-pairs separation and the fourth
-(reddish purple) is the next slot of the same palette. Keep new methods on the
+(reddish purple) is the next slot of the same palette, used by the second Spacetime
+Gaussians variant. Keep new methods on the
 following slots rather than picking free-hand hues. The two methods that appear in
 both studies keep their hue across them.
 

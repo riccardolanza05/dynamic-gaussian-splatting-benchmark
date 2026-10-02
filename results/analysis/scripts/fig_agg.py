@@ -23,8 +23,8 @@ for ax,(col,tit,tab,low) in zip(axes,panels):
         ax.text(i+0.30, mu, f"{mu:.4g}", fontsize=8, color=INK2, va="center")
     ax.set_xticks(range(len(ORDER))); ax.set_xticklabels(ORDER, rotation=18, ha="right", fontsize=8, color=INK2)
     ax.set_title(tit+("  ↓ better" if low else "  ↑ better"), color=INK, loc="left", fontweight="bold", fontsize=9.5)
-    ax.grid(True, axis="y", alpha=0.9); ax.set_axisbelow(True); ax.set_xlim(-0.6,2.8)
-fig.suptitle("Aggregate quality at an equal iteration budget — dots are scenes, bar is the mean",
+    ax.grid(True, axis="y", alpha=0.9); ax.set_axisbelow(True); ax.set_xlim(-0.6,len(ORDER)-0.2)
+fig.suptitle("Aggregate quality %s — dots are scenes, bar is the mean" % PA_AT,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.03)
 fig.tight_layout(); savefig(fig,"31_aggregate_quality_dots", FAIRNOTE+CAVEAT)
 
@@ -79,21 +79,21 @@ for m in ORDER:
         ax.set_ylabel(yl); ax.set_xlabel("Training iterations", fontsize=8)
         ax.grid(True,alpha=0.9); ax.set_axisbelow(True); ax.margins(x=0.16)
         ax.xaxis.set_major_formatter(lambda v,p: f"{v/1000:g}k" if v>=1000 else f"{v:g}")
-    fig.suptitle(f"{LABEL[m]} — per-scene training behaviour (equal-iteration runs)",
+    fig.suptitle(f"{LABEL[m]} — per-scene training behaviour ({PA_RUNS})",
                  color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.02)
     fig.tight_layout()
     savefig(fig, f"33_{m.lower().replace(' ','').replace('-','_')}_detail",
-            "Dashed = partial run. "+ (("Lego is not evaluable for this method (known limitation of the original paper). ") if m=="4DGS-fudan" else ""))
+            "Dashed = partial run. "+NOTE33.get(m,""))
 
 # ---- 34: efficiency ratios ----
-x=np.arange(len(SCENES)); w=0.26
+x=np.arange(len(SCENES)); w=BAR_W
 fig, axes = plt.subplots(1,2, figsize=(13.0,4.2))
 for i,m in enumerate(ORDER):
     ppm=[val(IT,m,s,"best_psnr")/(val(IT,m,s,"final_training_time_s")/60) for s in SCENES]
     ppmb=[val(LO,m,s,"fc_psnr")/val(LO,m,s,"model_storage_mb") for s in SCENES]
     axes[0].bar(x+(i-(len(ORDER)-1)/2)*w,ppm,w*0.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
     axes[1].bar(x+(i-(len(ORDER)-1)/2)*w,ppmb,w*0.92,color=C[m],edgecolor=SURF,lw=1.2,zorder=3)
-for ax,t,yl in zip(axes,["Quality per minute of training (equal-iteration runs)",
+for ax,t,yl in zip(axes,["Quality per minute of training (%s)" % PA_RUNS,
                          "Quality per MB of stored model (equal-L1-target runs)"],
                    ["Best PSNR / training minute","PSNR at target / model MB"]):
     ax.set_xticks(x); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES],rotation=25,ha="right",fontsize=8,color=INK2)

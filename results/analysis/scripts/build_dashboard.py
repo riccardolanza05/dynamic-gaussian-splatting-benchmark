@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("GS_ROOT") or os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 from study import ANALYSIS_DIR
-OUT  = os.path.join(ROOT, ANALYSIS_DIR)            # .../analysis (analysis_f300 for n3dv_full)
+OUT  = os.path.join(ROOT, ANALYSIS_DIR)            # .../analysis (analysis_f50 for n3dv_f50)
 CDN  = '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>'
 
 ap = argparse.ArgumentParser()

@@ -37,7 +37,27 @@ for m in ORDER:
         time_to_target_min=b.fc_training_time_s.mean()/60,
         psnr_at_target_mean=b.fc_psnr.mean(), storage_at_target_mb=b.model_storage_mb.mean(),
         gauss_at_target_mean=b.fc_num_gaussians.mean()))
-agg=pd.DataFrame(agg); agg.to_csv(os.path.join(TAB,"table_aggregates_fair5.csv"),index=False)
+agg=pd.DataFrame(agg)
+if STUDY!="monocular":
+    # Protocol A read where the authors read it (per-scene snapshot for Spacetime Gaussians,
+    # the end of the official budget for the others), next to the end and the best of the run.
+    t3=IT[["method","scene","official_iteration","official_psnr","official_ssim","official_lpips",
+           "official_eval_l1_loss","official_training_time_s","official_images_seen",
+           "final_iteration","final_psnr","final_ssim","final_lpips","final_training_time_s",
+           "best_psnr","best_psnr_iter","peak_vram_mb","model_storage_mb",
+           "preparation_time_s","scene_data_mb"]].sort_values(["scene","method"])
+    t3.to_csv(os.path.join(TAB,"table_official_readout.csv"),index=False)
+    extra=[]
+    for m in ORDER:
+        a=IT[(IT.method_short==m)&(IT.scene.isin(FAIR))]
+        extra.append(dict(psnr_official_mean=a.official_psnr.mean(),
+                          ssim_official_mean=a.official_ssim.mean(),
+                          lpips_official_mean=a.official_lpips.mean(),
+                          time_official_min=a.official_training_time_s.mean()/60,
+                          psnr_final_mean=a.final_psnr.mean(),
+                          storage_mb_mean=a.model_storage_mb.mean()))
+    agg=pd.concat([agg,pd.DataFrame(extra)],axis=1)
+agg.to_csv(os.path.join(TAB,"table_aggregates_fair5.csv"),index=False)
 pd.set_option("display.width",250)
 print(agg.round(3).to_string(index=False))
 print()
