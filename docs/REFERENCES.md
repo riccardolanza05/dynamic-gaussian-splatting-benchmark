@@ -5,13 +5,14 @@ Papers studied or benchmarked in this project. The PDFs are not redistributed he
 | # | Paper | Venue | Links | Role in this project |
 |---|---|---|---|---|
 | 1 | Kerbl, Kopanas, Leimkühler, Drettakis. *3D Gaussian Splatting for Real-Time Radiance Field Rendering* | ACM TOG (SIGGRAPH) 2023 | [arXiv:2308.04079](https://arxiv.org/abs/2308.04079) · [code](https://github.com/graphdeco-inria/gaussian-splatting) | static foundation of all methods |
-| 2 | Luiten, Kopanas, Leibe, Ramanan. *Dynamic 3D Gaussians: Tracking by Persistent Dynamic View Synthesis* | 3DV 2024 | [arXiv:2308.09713](https://arxiv.org/abs/2308.09713) · [code](https://github.com/JonathonLuiten/Dynamic3DGaussians) | studied; multi-view only, not benchmarked |
+| 2 | Luiten, Kopanas, Leibe, Ramanan. *Dynamic 3D Gaussians: Tracking by Persistent Dynamic View Synthesis* | 3DV 2024 | [arXiv:2308.09713](https://arxiv.org/abs/2308.09713) · [code](https://github.com/JonathonLuiten/Dynamic3DGaussians) | studied; set aside from the multi-view study before any run ([why](METHODOLOGY_MULTIVIEW.md#11-dynamic-3d-gaussians-studied-then-set-aside)) |
 | 3 | Yang, Gao, Zhou, Jiao, Zhang, Jin. *Deformable 3D Gaussians for High-Fidelity Monocular Dynamic Scene Reconstruction* | CVPR 2024 | [arXiv:2309.13101](https://arxiv.org/abs/2309.13101) · [code](https://github.com/ingra14m/Deformable-3D-Gaussians) | benchmarked (Deformable-3DGS) |
 | 4 | Wu, Yi, Fang, Xie, Zhang, Wei, Liu, Tian, Wang. *4D Gaussian Splatting for Real-Time Dynamic Scene Rendering* | CVPR 2024 | [arXiv:2310.08528](https://arxiv.org/abs/2310.08528) · [code](https://github.com/hustvl/4DGaussians) | benchmarked (4DGaussians) |
 | 5 | Yang, Yang, Pan, Zhang. *Real-time Photorealistic Dynamic Scene Representation and Rendering with 4D Gaussian Splatting* | ICLR 2024 | [arXiv:2310.10642](https://arxiv.org/abs/2310.10642) · [code](https://github.com/fudan-zvg/4d-gaussian-splatting) | benchmarked (4DGS native-4D) |
 | 6 | Yang, Pan, Zhu, Zhang, Feng, Jiang, Torr. *4D Gaussian Splatting: Modeling Dynamic Scenes with Native 4D Primitives* | arXiv 2024 (extended version of 5) | [arXiv:2412.20720](https://arxiv.org/abs/2412.20720) | extended description of the native-4D method |
-| 7 | Li, Chen, Li, Xu. *Spacetime Gaussian Feature Splatting for Real-Time Dynamic View Synthesis* | CVPR 2024 | [arXiv:2312.16812](https://arxiv.org/abs/2312.16812) · [code](https://github.com/oppo-us-research/SpacetimeGaussians) | studied; not benchmarked |
-| 8 | Pumarola, Corona, Pons-Moll, Moreno-Noguer. *D-NeRF: Neural Radiance Fields for Dynamic Scenes* | CVPR 2021 | [arXiv:2011.13961](https://arxiv.org/abs/2011.13961) | source of the benchmark dataset |
+| 7 | Li, Chen, Li, Xu. *Spacetime Gaussian Feature Splatting for Real-Time Dynamic View Synthesis* | CVPR 2024 | [arXiv:2312.16812](https://arxiv.org/abs/2312.16812) · [code](https://github.com/oppo-us-research/SpacetimeGaussians) | benchmarked in the multi-view study (notebook 07) |
+| 8 | Pumarola, Corona, Pons-Moll, Moreno-Noguer. *D-NeRF: Neural Radiance Fields for Dynamic Scenes* | CVPR 2021 | [arXiv:2011.13961](https://arxiv.org/abs/2011.13961) | source of the monocular benchmark dataset |
+| 9 | Li, Slavcheva, Zollhöfer, Green, Lassner, Kim, Schmidt, Lovegrove, Goesele, Newcombe, Lv. *Neural 3D Video Synthesis from Multi-view Video* | CVPR 2022 | [arXiv:2103.02597](https://arxiv.org/abs/2103.02597) · [dataset](https://github.com/facebookresearch/Neural_3D_Video) | source of the multi-view benchmark dataset (CC-BY-NC 4.0) |
 
 Community code used in the fudan-zvg notebook: the `render.py` and visualisation approach of [fudan-zvg/4d-gaussian-splatting PR #60](https://github.com/fudan-zvg/4d-gaussian-splatting/pull/60).
 
@@ -67,5 +68,11 @@ Community code used in the fudan-zvg notebook: the `render.py` and visualisation
   author    = {Pumarola, Albert and Corona, Enric and Pons-Moll, Gerard and Moreno-Noguer, Francesc},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2021}
+}
+@inproceedings{li2022neural3dvideo,
+  title     = {Neural 3D Video Synthesis from Multi-view Video},
+  author    = {Li, Tianye and Slavcheva, Mira and Zollh{\"o}fer, Michael and Green, Simon and Lassner, Christoph and Kim, Changil and Schmidt, Tanner and Lovegrove, Steven and Goesele, Michael and Newcombe, Richard and Lv, Zhaoyang},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2022}
 }
 ```
