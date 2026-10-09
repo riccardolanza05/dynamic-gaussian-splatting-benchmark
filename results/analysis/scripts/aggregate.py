@@ -71,6 +71,9 @@ for mdir, mname in METHOD_DIR.items():
                        "wall_time_s","benchmark_overhead_s","psnr","ssim","lpips","eval_l1_loss",
                        "eval_photometric_loss","eval_loss","num_gaussians","train_batch_loss",
                        "eval_duration_s"]})
+            # A second LPIPS backbone, recorded by the multi-view notebooks only.
+            if STUDY != "monocular":
+                r["lpips_alex"] = e.get("lpips_alex")
             rows_c.append(r)
         fin = d.get("final") or {}
         best_psnr = d.get("best_psnr")
@@ -98,7 +101,10 @@ for mdir, mname in METHOD_DIR.items():
             off = official_iteration(cfg) if mode == "iterations" else None
             rr["official_iteration"] = off
             hit = next((e for e in ents if e.get("iteration") == off), None) if off else None
-            for k in ["psnr", "ssim", "lpips", "eval_l1_loss", "training_time_s",
+            rr["final_lpips_alex"] = fin.get("lpips_alex")
+            _alex = [e["lpips_alex"] for e in ents if e.get("lpips_alex") is not None]
+            rr["best_lpips_alex"] = min(_alex) if _alex else None
+            for k in ["psnr", "ssim", "lpips", "lpips_alex", "eval_l1_loss", "training_time_s",
                       "images_seen", "num_gaussians"]:
                 rr["official_" + k] = hit.get(k) if hit else None
             rr["preparation_time_s"] = d.get("preparation_time_s")

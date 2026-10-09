@@ -42,6 +42,7 @@ if STUDY!="monocular":
     # Protocol A read where the authors read it (per-scene snapshot for Spacetime Gaussians,
     # the end of the official budget for the others), next to the end and the best of the run.
     t3=IT[["method","scene","official_iteration","official_psnr","official_ssim","official_lpips",
+           "official_lpips_alex","final_lpips_alex","best_lpips_alex",
            "official_eval_l1_loss","official_training_time_s","official_images_seen",
            "final_iteration","final_psnr","final_ssim","final_lpips","final_training_time_s",
            "best_psnr","best_psnr_iter","peak_vram_mb","model_storage_mb",
@@ -53,6 +54,8 @@ if STUDY!="monocular":
         extra.append(dict(psnr_official_mean=a.official_psnr.mean(),
                           ssim_official_mean=a.official_ssim.mean(),
                           lpips_official_mean=a.official_lpips.mean(),
+                          lpips_alex_official_mean=a.official_lpips_alex.mean(),
+                          lpips_alex_best_mean=a.best_lpips_alex.mean(),
                           time_official_min=a.official_training_time_s.mean()/60,
                           psnr_final_mean=a.final_psnr.mean(),
                           storage_mb_mean=a.model_storage_mb.mean()))

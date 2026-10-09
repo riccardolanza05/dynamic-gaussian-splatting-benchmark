@@ -210,7 +210,7 @@ else:
     GRID_NOTE = " Evaluation grid: about 30 samples per run (every 500 or 1 000 iterations)."
     NOTE33 = {}
 
-    _COMMON = ("cam00 held out, 1352x1014, LPIPS-VGG. Protocol A runs each method at its official "
+    _COMMON = ("cam00 held out, 1352x1014, LPIPS-VGG (LPIPS-AlexNet is in the tables). Protocol A runs each method at its official "
                "N3DV budget, so the step axis is not a common unit of work: compare on images seen "
                "or on time. Spacetime Gaussians appears in the variants that were run (lite, full). ")
     if STUDY == "n3dv":
