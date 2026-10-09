@@ -67,7 +67,9 @@ Three things are specific to the multi-view studies:
 * **The official readout.** `tables/table_official_readout.csv` reads each Protocol A run
   at the step its authors read it — recorded by the notebook as `official_test_iteration`
   (Spacetime Gaussians, per scene) or `official_iterations` — next to its end and its
-  best, with the preparation time and the disk of the scene.
+  best, with the preparation time and the disk of the scene. It carries LPIPS with both
+  backbones (`official_lpips` is VGG, `official_lpips_alex` AlexNet): on N3DV the papers of
+  4DGS native-4D and Spacetime Gaussians report AlexNet.
 
 The grouped-bar figures size their bars from the number of methods, so four rows fit.
 With `GS_STUDY` unset the pipeline behaves exactly as it did before `study.py` existed.

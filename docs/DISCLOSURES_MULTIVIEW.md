@@ -8,7 +8,7 @@ Choices — taken or still open — are in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DE
 |---|---|---|
 | [1](#1-protocol-a-is-not-an-equal-budget-comparison) | Protocol A is not an equal-budget comparison | every Protocol A table |
 | [2](#2-spacetime-gaussians-at-300-frames-is-six-models) | Spacetime Gaussians at 300 frames is six models | its time, steps, images and storage in the main study |
-| [3](#3-lpips-uses-a-different-backend-from-the-monocular-study) | LPIPS backend differs from the monocular study | comparing LPIPS across the two studies |
+| [3](#3-lpips-is-recorded-with-two-backbones-and-the-papers-use-different-ones) | LPIPS is recorded with two backbones, and the papers use different ones | every LPIPS comparison with a paper |
 | [4](#4-the-initial-point-cloud-may-be-smaller-than-upstreams) | The shared point cloud may be smaller than upstream's | 4DGaussians and 4DGS native-4D |
 | [5](#5-notebooks-0507-are-generated-and-nothing-has-run-on-a-gpu) | Notebooks 05–07 are generated, and nothing has run on a GPU | reproducing the notebooks; trusting them before the first run |
 | [6](#6-upstream-code-changed-in-one-notebook) | One notebook patches upstream reader code | the "official code unchanged" claim |
@@ -51,15 +51,23 @@ The per-block JSON files are kept under `<run>/blocks/`, so every merged number 
 
 ---
 
-## 3. LPIPS uses a different backend from the monocular study
+## 3. LPIPS is recorded with two backbones, and the papers use different ones
 
-**What.** The monocular notebooks use each repository's bundled `lpipsPyTorch` (VGG), falling back to the pip `lpips` package only if it is unavailable. The three multi-view notebooks force the **pip `lpips` package**, with the `[-1, 1]` rescaling it expects, through `LPIPS_BACKEND = "lpips-pip"` in cell 0.1.
+**What.** Every evaluation records two LPIPS values: `lpips`, with the VGG backbone, and `lpips_alex`, with AlexNet. Both come from the `lpipsPyTorch` module that each repository bundles, called on images in [0, 1] as the repositories' own evaluation scripts call it.
 
-**Why.** The choice was made when Dynamic 3D Gaussians was part of the study: that repository does not bundle `lpipsPyTorch`, so leaving the backend to each repository would have put one method on a different implementation. The method has since been set aside, and the original reason with it. The setting was kept because it guarantees one implementation by construction; whether to go back to the bundled package is an open, low-stakes choice ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §9).
+**Why two.** The papers do not agree. On N3DV, 4DGS native-4D and Spacetime Gaussians report AlexNet; 4DGaussians' code prints both and its paper does not say which one is in its table. The monocular study recorded VGG. ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §9 has the sources.)
 
-**How to read it.** LPIPS is comparable **within** the multi-view study and **within** the monocular study, and should not be compared **between** them. The two implementations are both VGG-backed and both use the official linear weights, so they are close, but they are not the same code and no calibration between them was measured. The resolved backend is written into each run's summary as `lpips_backend`.
+**The module is the same in the three repositories**: the four files of `lpipsPyTorch` have identical git blob hashes in all of them (checked on 2026-10-09), so the three methods are scored by the same code, as in the monocular study.
 
-**Not affected:** PSNR, SSIM and the evaluation L1, which are computed by each repository's own modules in both studies.
+**How to read it.**
+
+* To compare with 4DGS native-4D (0.055) or Spacetime Gaussians (0.044 full, 0.047 lite), use `lpips_alex`.
+* For 4DGaussians (0.049) the published backbone is unknown: neither field can be claimed to be the same quantity.
+* To compare with the monocular study, use `lpips` (VGG, same module, same call).
+* These values are computed on [0, 1] inputs. That is the convention of the whole 3D Gaussian Splatting family, and it is not how the LPIPS reference implementation is normally called, so they should not be set next to LPIPS values produced by other code.
+* Each run says which backend produced it (`lpips_backend`). A run made with `--set LPIPS_BACKEND=lpips-pip` (the pip package on inputs rescaled to [-1, 1]) is a different number and must not be mixed with the others.
+
+**Not affected:** PSNR, SSIM and the evaluation L1.
 
 ---
 
@@ -79,7 +87,7 @@ The per-block JSON files are kept under `<run>/blocks/`, so every merged number 
 
 **Why a generator.** The three multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property — along with the configuration, path-resolution, dataset, driver and reporting cells. Hand-maintained copies of a 300-line monitor drift; a generator cannot.
 
-**What it guarantees.** The generator ships with a check suite (238 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
+**What it guarantees.** The generator ships with a check suite (245 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
 
 **What it does not guarantee.** Nothing requiring CUDA, COLMAP or the N3DV dataset was executed: the converters, the COLMAP invocations, the rasterizers and every `_render_pair` against a real model are **unverified by execution**. The notebooks are checked as structurally sound and consistent with one another, not as runnable end to end. The first smoke run is the first real test.
 
@@ -118,6 +126,11 @@ All were found by re-reading the upstream repositories and papers. No run had be
 * **`--set MAX_ITERATIONS=…` had no effect**: the budget was a literal in cell 0.1. It now reads the environment, which a short smoke run needs.
 
 Everything else that cites a table, a file, a line or an issue was found as cited. Quoted sentences were checked on the README files, the issue threads and the LaTeX sources of the papers.
+
+### 2026-10-09 (check of the LPIPS code)
+
+* **"LPIPS (VGG), as reported in all the papers" was wrong for this dataset.** On N3DV, 4DGS native-4D and Spacetime Gaussians report LPIPS with AlexNet, and 4DGaussians does not state its backbone. The notebooks now record both backbones (§3).
+* **The pip `lpips` package with inputs rescaled to [-1, 1] is not what the repositories compute.** They call their bundled `lpipsPyTorch` on images in [0, 1]. The notebooks used the former; they now use the latter, which is the same module in all three repositories.
 
 ---
 

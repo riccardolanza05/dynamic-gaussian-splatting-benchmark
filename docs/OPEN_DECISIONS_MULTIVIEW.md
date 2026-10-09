@@ -2,19 +2,19 @@
 
 The multi-view extension rests on a number of **judgement calls, not facts**. This page lists them: what was decided and why, what is still open, and what each alternative would cost. Each entry says what is implemented today, so that a decision is taken with the trade-off in view and not discovered when the tables are already built.
 
-The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02, two lapsed on the same day because the method they concerned was set aside, and four are open.
+The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02 and one on 2026-10-09, two lapsed because the method they concerned was set aside, and three are open; for each open one the table says when it will be taken.
 
 | # | Decision | Status | Implemented today |
 |---|---|---|---|
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | **lapsed** (method set aside, 2026-10-02) | — |
 | [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study, 50 frames the secondary one | `NUM_FRAMES = 300` by default, `--set NUM_FRAMES=50` for the short window |
-| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-02**: both, as two rows; `ours_lite` alone if both cost too much. The threshold is open | `ours_lite` by default, `--set STG_MODEL=ours_full` for the second row |
-| [4](#4-which-gpu) | Which GPU the whole study runs on | **open** — must be chosen before the first run | nothing: it is chosen when the machine is started |
+| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-02**: both, as two rows; `ours_lite` alone if both cost too much. The threshold will be set after at least one scene has been run with `ours_full` | `ours_lite` by default, `--set STG_MODEL=ours_full` for the second row |
+| [4](#4-which-gpu) | Which GPU the whole study runs on | **open** — to be chosen from the smoke test, before the first real run | nothing: it is chosen when the machine is started |
 | [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | Configuration of Dynamic 3D Gaussians on N3DV | **lapsed** (method set aside, 2026-10-02) | — |
 | [6](#6-the-protocol-a-budget) | Protocol A budget | **decided 2026-10-02**: each method at its official N3DV budget | 3 000 + 14 000 for 4DGaussians, 30 000 for the other two |
 | [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **open** — to be taken after the Protocol A runs | Protocol B runs on the 50-frame window only |
-| [8](#8-a-temporally-subsampled-window) | A temporally subsampled window (one frame in six) | **open** — to be taken after the smoke test | not implemented |
-| [9](#9-lpips-backend) | LPIPS backend, now that its original reason is gone | **open**, low stakes | the pip `lpips` package in all three notebooks |
+| [8](#8-a-temporally-subsampled-window) | A temporally subsampled window (one frame in six) | **open**, with no date: left open for now | not implemented |
+| [9](#9-lpips-backend) | LPIPS: which code computes it | **decided 2026-10-09**: the module the three repositories bundle, which was verified to be the same in all three | `lpipsPyTorch` from each repository, VGG as `lpips` and AlexNet as `lpips_alex` |
 
 **Irreversible ones.** Changing the GPU (4) or the main window (2) after the runs means rerunning everything. The others are a knob, one notebook to rerun, extra runs in separate folders, or an analysis step.
 
@@ -61,10 +61,12 @@ Until 2026-10-02 the main window was 50 frames, for one reason: Dynamic 3D Gauss
 
 | Method | Published N3DV result, 300 frames, 1352×1014 | Source |
 |---|---|---|
-| 4DGaussians | 31.15 dB PSNR, 0.049 LPIPS | its paper, Table 3; per scene in its appendix, Table 6 |
-| 4DGS native-4D | 32.01 dB PSNR, 0.055 LPIPS | its paper, Table 1 (average only) |
-| Spacetime Gaussians, full | 32.05 dB PSNR, 0.044 LPIPS | its paper, Appendix B, Table 6 |
-| Spacetime Gaussians, lite | 31.59 dB PSNR, 0.047 LPIPS | same table |
+| 4DGaussians | 31.15 dB PSNR, 0.049 LPIPS (backbone not stated) | its paper, Table 3; per scene in its appendix, Table 6 |
+| 4DGS native-4D | 32.01 dB PSNR, 0.055 LPIPS (AlexNet) | its paper, Table 1 (average only) |
+| Spacetime Gaussians, full | 32.05 dB PSNR, 0.044 LPIPS (AlexNet) | its paper, Appendix B, Table 6 |
+| Spacetime Gaussians, lite | 31.59 dB PSNR, 0.047 LPIPS (AlexNet) | same table |
+
+The LPIPS figures are not all the same quantity: see decision 9.
 
 **What 300 frames buys.** The comparison with the papers, which the 50-frame window did not allow. In the monocular study that comparison was the quality check ([METHODOLOGY.md](METHODOLOGY.md) §7): it is what revealed the white/black background issue. An error common to all methods — poses converted wrongly, a wrong test split, a different resolution — moves every method by a similar amount, leaves the ranking plausible, and is visible only against an external number.
 
@@ -131,7 +133,7 @@ One more full loop of notebook 07, the most expensive notebook. Two details:
 
 If both are too expensive, `ours_lite` alone. The comparison with the paper survives, because the paper has a row for it (31.59 dB). What is lost is the paper's headline number.
 
-**Open sub-point (3a): the threshold.** No number has been fixed for "too expensive". The smoke test gives the hours per variant on the chosen GPU ([how](#the-smoke-test)). An intermediate option exists: both variants on the 50-frame study, one on the 300-frame one.
+**Open sub-point (3a): the threshold.** No number has been fixed for "too expensive". It will be set once at least one scene has been run with `ours_full`, so that the cost of the second variant is a measurement and not an extrapolation; the smoke test gives a first figure ([how](#the-smoke-test)). An intermediate option exists: both variants on the 50-frame study, one on the 300-frame one.
 
 ### How it is implemented
 
@@ -143,7 +145,7 @@ If both are too expensive, `ours_lite` alone. The comparison with the paper surv
 
 **Where:** not in the code — it is what you select when you start the machine. See also the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh).
 
-**Open. It has to be chosen before the first run.**
+**Open. It will be chosen from the smoke test, before the first real run.**
 
 ### Why this is a decision and not a detail
 
@@ -161,8 +163,10 @@ Two of the monitored metrics, **training time** and **peak VRAM**, are not prope
 |---|---|---|
 | **T4** (16 GB) | The card of the monocular study. Cheapest per hour. | The slowest. Spacetime Gaussians needs `--gtisint8 1` to fit (below). The "continuity" with the monocular study is partly illusory: dataset, resolution and window differ, and so does the machine around the GPU. |
 | **L4** (24 GB) | Good speed/price balance; fits Spacetime Gaussians as its README requires. | Times are not comparable with the monocular study. |
-| **A10G** (24 GB) | Faster still. | More expensive per hour; same incomparability. |
+| **L40S** (48 GB), **RTX PRO 6000** | Faster, and memory to spare. | Two to three times the hourly price of an L4; same incomparability. |
 | **A100** (40/80 GB) | The fastest. | Pays for memory that may not be needed: in the monocular study no run exceeded 5.1 GB of VRAM. |
+
+These are the single-GPU machine types the provider's command-line tool lists (checked 2026-10-09); an A10G, named in an earlier version of this table, is not among them.
 
 **Memory.** Spacetime Gaussians' README states: "You need 24GB GPU memory to train on the Neural 3D Dataset", because "training images are loaded into GPU memory". Its code has an option that holds them as 8-bit integers instead of floats (`gtisint8`, `thirdparty/gaussian_splatting/arguments/__init__.py:147`; it is not mentioned in the README), which is lossless for 8-bit PNG frames. On a 16 GB card it is required (`--set EXTRA_TRAIN_ARGS="--gtisint8 1"`); on a 24 GB card it should not be. Whether 24 GB is enough for `ours_full`, and for the other two methods at 300 frames, is to be measured.
 
@@ -301,7 +305,7 @@ The Protocol A curves already contain "the first sample at which the target is m
 
 **Where:** nowhere yet. It would be a new knob in cell 0.1 of the three notebooks.
 
-**Open. Proposed on 2026-10-02 by the project's collaborators; to be taken after the smoke test.**
+**Open. Proposed on 2026-10-02 by the project's collaborators; left open for now, with no date.**
 
 ### The idea
 
@@ -335,22 +339,41 @@ A possible extension, not costed: the frames that were skipped are available as 
 * **B — add it as a third study**, next to the 300-frame and the contiguous 50-frame ones.
 * **C — let it replace the contiguous 50-frame study.** Protocol B would then run on a window that is representative of the whole scene, at the same cost.
 
-**Current default:** A. **Recommendation:** decide once the smoke test has given the cost of a 50-frame loop; if the experiment is run, C is the option that adds no GPU time.
+**Current default:** A. If the experiment is run, C is the option that adds no GPU time.
 
 ---
 
 ## 9. LPIPS backend
 
-**Where:** `LPIPS_BACKEND` in cell 0.1 of the three notebooks.
+**Where:** `LPIPS_BACKEND`, `LPIPS_NET` and `LPIPS_EXTRA_NETS` in cell 0.1 of the three notebooks.
 
-**Open, low stakes.**
+**Decided 2026-10-09.** The rule set by the study owner: check whether the three methods compute the same metric with the same code; if all of them do, use that code; if not, import one LPIPS module and use it for all.
 
-The multi-view notebooks force the pip `lpips` package for every method. The reason was Dynamic 3D Gaussians, which does not bundle `lpipsPyTorch` as the other repositories do: leaving the choice to each repository would have put one method on a different implementation. With that method set aside, the reason no longer applies.
+### What the check found
 
-* **Option A — keep the pip package (implemented).** One implementation by construction, whatever each repository bundles. LPIPS is then not comparable with the monocular study, which used the bundled package.
-* **Option B — use each repository's bundled `lpipsPyTorch`, as the monocular study does.** Continuity between the two studies. It requires checking that all three repositories bundle it and that the three copies are the same code; that check has not been made.
+**All three repositories bundle the same LPIPS module.** `lpipsPyTorch/` (in Spacetime Gaussians, `thirdparty/gaussian_splatting/lpipsPyTorch/`) has the same four files in the three repositories — `__init__.py`, `modules/lpips.py`, `modules/networks.py`, `modules/utils.py` — with identical git blob hashes. It is the module of the original 3D Gaussian Splatting code base.
 
-Both are LPIPS with the VGG backbone and the official linear weights, so the difference is expected to be small. **Recommendation:** keep A unless LPIPS has to be compared across the two studies.
+**They feed it in the same way.** 4DGaussians' `metrics.py` and Spacetime Gaussians' `test.py` both call `lpips(render, gt, net_type=...)` on images in [0, 1]. The module applies only the LPIPS scaling layer (`modules/networks.py`), with no conversion to [-1, 1]. 4DGS native-4D bundles the module but its training and evaluation code never calls it.
+
+**They do not agree on the backbone.**
+
+| | What its code computes | What its paper reports on N3DV |
+|---|---|---|
+| 4DGaussians | both: `LPIPS-vgg` and `LPIPS-alex` (`metrics.py:76–78`) | not stated |
+| 4DGS native-4D | nothing (the module is bundled but not called) | AlexNet: "the LPIPS in the Plenoptic Video dataset and the D-NeRF dataset are computed using AlexNet and VGGNet respectively" |
+| Spacetime Gaussians | both: `LPIPS` is AlexNet, `LPIPSVGG` is VGG (`test.py:136–137`) | AlexNet: in its Table 6, "no annotation means LPIPS_Alex"; the 4DGaussians value it quotes is marked as of unclear backbone |
+
+### What was decided
+
+* **The bundled module is used, in all three notebooks** (`LPIPS_BACKEND = "lpipsPyTorch"`), fed with images in [0, 1] as the repositories feed it. The condition of the rule is met: it is the same code in all three. This is also the backend of the monocular study, so the two studies now measure LPIPS in the same way.
+* **Both backbones are recorded.** `lpips` is VGG, as in the monocular study; `lpips_alex` is AlexNet, and it is the number to set next to the N3DV figures of 4DGS native-4D and Spacetime Gaussians. The extra cost is one AlexNet pass per test view.
+* The pip `lpips` package, which the notebooks used until now with inputs rescaled to [-1, 1], stays available as `--set LPIPS_BACKEND=lpips-pip`. **It gives a different number**: the same network, but on inputs in the range the original LPIPS expects. A run records which backend produced it (`lpips_backend`).
+
+### What this changes in how the numbers are read
+
+* Until this check the notebooks would have produced an LPIPS that no paper of the three reports on this dataset (VGG, on rescaled inputs).
+* A published "LPIPS" on N3DV is not one quantity. Compare `lpips_alex` with 4DGS native-4D (0.055) and Spacetime Gaussians (0.044 full, 0.047 lite); for 4DGaussians (0.049) the backbone is not known, so neither field can be claimed to match it.
+* The values of the 3D Gaussian Splatting family are computed on [0, 1] inputs, which is not how the LPIPS reference implementation is normally called. That is what the papers report, so it is what is reproduced here; it should not be compared with LPIPS values from outside this family of code.
 
 ---
 
@@ -420,6 +443,7 @@ The title of the paper is *"Tracking by Persistent Dynamic View Synthesis"*: its
 
 ## How the decisions interact
 
+* **The order in which the open ones are taken**: the GPU (4) from the smoke test; the fallback threshold (3a) after one scene with `ours_full`; Protocol B at 300 frames (7) after the Protocol A runs; the subsampled window (8) has no date.
 * **3 and 4 are tied by the budget.** Spacetime Gaussians at 300 frames is 36 models per variant; whether both variants are affordable is what the smoke test on the chosen GPU has to say.
 * **2 and 7.** Making 300 frames the main window leaves the main study without Protocol B until decision 7 is taken.
 * **2 and 8.** The subsampled window (8) is a candidate replacement for the contiguous 50-frame study, not for the main one.
@@ -445,6 +469,10 @@ Recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §7. None affec
 * **The GPU of the 4DGaussians paper is stated**: a single RTX 3090 (§5.1). An earlier version of this page said it was not.
 * **The 4DGaussians paper and its repository disagree on two settings.** The paper's appendix (A.1) says "The batch size in training is set to 1" and that the dense point cloud is downsampled "lower than 100k"; the repository's N3DV configs use batch 4 or 2, and its README says the cloud is downsampled "to less than 40000 points". This study follows the repository, which is what produces the runs.
 * **The per-frame COLMAP stage of Spacetime Gaussians is not shared between its two variants by default** (decision 3).
+
+And one from the check of 2026-10-09:
+
+* **The papers do not all report LPIPS with VGG on this dataset.** The notebooks and these documents said "LPIPS (VGG), as reported in all the papers". On N3DV two of the three report AlexNet, and the third does not say (decision 9). The notebooks now record both.
 
 Everything else on this page that cites a table, a file or an issue was found as cited, including the line numbers. The quoted sentences were checked on the README files, on the issue threads and on the LaTeX sources of the papers, not on rendered pages.
 
