@@ -10,7 +10,7 @@ Choices — taken or still open — are in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DE
 | [2](#2-spacetime-gaussians-at-300-frames-is-six-models) | Spacetime Gaussians at 300 frames is six models | its time, steps, images and storage in the main study |
 | [3](#3-lpips-is-recorded-with-two-backbones-and-the-papers-use-different-ones) | LPIPS is recorded with two backbones, and the papers use different ones | every LPIPS comparison with a paper |
 | [4](#4-the-initial-point-cloud-may-be-smaller-than-upstreams) | The shared point cloud may be smaller than upstream's | 4DGaussians and 4DGS native-4D |
-| [5](#5-notebooks-0507-are-generated-and-nothing-has-run-on-a-gpu) | Notebooks 05–07 are generated, and nothing has run on a GPU | reproducing the notebooks; trusting them before the first run |
+| [5](#5-notebooks-0507-are-generated-and-only-smoke-tested) | Notebooks 05–07 are generated, and only smoke-tested | reproducing the notebooks; trusting them before the first run |
 | [6](#6-upstream-code-changed-in-one-notebook) | One notebook patches upstream reader code | the "official code unchanged" claim |
 | [7](#7-corrections-made-before-the-first-run) | Corrections made before the first run | what earlier versions of these documents said |
 | [8](#8-a-method-was-set-aside-without-being-run) | A method was set aside without being run | what the study does not cover |
@@ -81,15 +81,15 @@ The per-block JSON files are kept under `<run>/blocks/`, so every merged number 
 
 ---
 
-## 5. Notebooks 05–07 are generated, and nothing has run on a GPU
+## 5. Notebooks 05–07 are generated, and only smoke-tested
 
 **What.** Notebooks 01–03 were written by hand. Notebooks 05–07 are assembled by a small generator, kept **locally only** at `notebooks/_build/` and deliberately excluded from the repository (`.gitignore`).
 
 **Why a generator.** The three multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property — along with the configuration, path-resolution, dataset, driver and reporting cells. Hand-maintained copies of a 300-line monitor drift; a generator cannot.
 
-**What it guarantees.** The generator ships with a check suite (245 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
+**What it guarantees.** The generator ships with a check suite (247 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
 
-**What it does not guarantee.** Nothing requiring CUDA, COLMAP or the N3DV dataset was executed: the converters, the COLMAP invocations, the rasterizers and every `_render_pair` against a real model are **unverified by execution**. The notebooks are checked as structurally sound and consistent with one another, not as runnable end to end. The first smoke run is the first real test.
+**What it does not guarantee.** The checks execute nothing that needs CUDA, COLMAP or the N3DV dataset: they say the notebooks are structurally sound and consistent with one another. That they run end to end was established separately, by smoke runs of one scene on a cloud GPU on 2026-10-09 (§7), which found and fixed a number of defects the checks could not see. Only one scene was run, with short budgets, so the other five scenes and the full budgets remain untested.
 
 **Consequence for the repository.** Since the generator is not published, the committed `.ipynb` files are the source of truth for anyone else; the byte-identity of the monitor core remains inspectable in them (it is delimited by `# === BENCHMARK MONITOR CORE ===` markers) but is not automatically re-checkable by a third party.
 
@@ -126,6 +126,15 @@ All were found by re-reading the upstream repositories and papers. No run had be
 * **`--set MAX_ITERATIONS=…` had no effect**: the budget was a literal in cell 0.1. It now reads the environment, which a short smoke run needs.
 
 Everything else that cites a table, a file, a line or an issue was found as cited. Quoted sentences were checked on the README files, the issue threads and the LaTeX sources of the papers.
+
+### 2026-10-09 (first runs on a cloud GPU)
+
+The notebooks were run for the first time, on one scene (`sear_steak`): first on a CPU machine, to find what fails before paying for a GPU, then on an L4. These were short smoke runs, plus one run of 4DGaussians at its full budget. They are not results of the study.
+
+* **The shared COLMAP stage wrote reflected cameras.** Converting the LLFF poses of `poses_bounds.npy` to COLMAP's convention, it negated the middle column of the rotation as well as the last one, so every camera "rotation" had determinant −1. COLMAP then triangulated 357 points with a mean track length of 2.0 (spurious pairs), and dense fusion kept 39. With the conversion that 4DGaussians' `scripts/llff2colmap.py` and Spacetime Gaussians' `script/pre_n3d.py` use — columns (1, 0, −2) — the same 21 images give 3 926 points, a mean track length of 5.8 and a reprojection error of 0.69 px, and those points reproject at a median 0.5 px through the cameras that each of the two readers builds. The stage now asserts that the rotations are proper.
+* **What that error cost.** 4DGaussians and 4DGS native-4D started from that cloud. A run of 4DGaussians at its full official budget (3 000 + 14 000 steps, 300 frames) made before the fix reached **25.30 dB** on `sear_steak`, against 32.49 dB in the paper (appendix, Table 6), in the 40 minutes the paper reports. Spacetime Gaussians, which builds its own per-frame clouds with upstream's code, reached 32.7 dB (lite) and 33.5 dB (full) in 2 000 steps. **The 4DGaussians run has not been repeated after the fix**: whether the corrected cloud closes the gap is not yet measured.
+* **The 4DGS native-4D conversion was reused across windows.** A scene converted for 50 frames was taken as converted for 300. The conversion now records the window and the cloud it was made from.
+* **Environment.** On a fresh lightning.ai Studio the notebooks needed: a CUDA compiler matching PyTorch (the machines ship none on CPU and CUDA 13 on GPU, PyTorch is built for 12.8), `ffmpeg` and `zip`, two standard C++ headers in the CUDA sources, Pillow below 12, `mmcv` built from source for Spacetime Gaussians, COLMAP told to run without a display, and a CUDA build of COLMAP for the dense steps. Each is now done by the notebooks and explained in the cell that does it. Failed installations used to pass silently; the notebooks now stop and name the module.
 
 ### 2026-10-09 (check of the LPIPS code)
 
