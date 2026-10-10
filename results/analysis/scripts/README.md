@@ -30,25 +30,68 @@ which needs internet the first time it is opened. To get a fully offline copy ba
 `chart.umd.js` (Chart.js 4.4.4, e.g. `npm pack chart.js@4.4.4` or the cdnjs URL in
 `dash_template.html`) and run `python3 build_dashboard.py --inline-lib /path/to/chart.umd.js`.
 
-`common.py` is shared setup: paths, the colour palette, the method/scene ordering, the
-`partial` and `not evaluable` flags, and `savefig()` (writes both PNG at 200 dpi and PDF).
+`study.py` holds everything that depends on which study is being analysed (see below).
+`common.py` is shared setup: paths, the colour palette, the tables it re-exports from
+`study.py`, and `savefig()` (writes both PNG at 200 dpi and PDF).
+
+## Two studies in one pipeline
+
+The same scripts analyse the **monocular** study (D-NeRF, notebooks `01`-`03`) and the
+**multi-view** one (Neural 3D Video, notebooks `05`-`07`). They are reported separately,
+so everything that names a method or a scene — folders, labels, colours, scene lists, the
+`FAIR` set, the `PARTIAL` and `NOT_EVAL` flags — and every sentence a figure prints about
+the protocol (the caveat, how Protocol A is called, the GPU, the common budgets) lives in
+`study.py` and is selected by `GS_STUDY`, while the data root is `GS_ROOT` as before:
+
+```bash
+./run_all.sh                                               # monocular (the default)
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv ./run_all.sh       # multi-view, 300 frames (main)
+GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_f50 ./run_all.sh   # multi-view, 50 frames
+```
+
+Every output — tables, the 46 figures, `dashboard_data.json` and `benchmark_dashboard.html` —
+is written under `$GS_ROOT/analysis/` (`$GS_ROOT/analysis_f50/` for `n3dv_f50`), so the
+studies never overwrite each other. The two N3DV studies read the same method folders and
+keep only the runs of their own window (`NUM_FRAMES` in `study.py`); the 300-frame one has
+no Protocol B runs.
+
+Three things are specific to the multi-view studies:
+
+* **One folder, two methods.** Spacetime Gaussians is benchmarked in two variants whose
+  runs share `spacetime_gaussians_output/`. `VARIANTS` in `study.py` names the config key
+  that tells them apart (`stg_model`), and each variant becomes its own row and colour. A
+  variant with no run is dropped from the figures (`VARIANT_GROUPS`).
+* **No common step budget.** Protocol A runs each method at its official budget, so
+  `STEP_BUDGET` is `None` and the "equal steps" row of figure 44 is left out; the titles
+  say "official budget of each method" where the monocular ones say "equal-iteration".
+* **The official readout.** `tables/table_official_readout.csv` reads each Protocol A run
+  at the step its authors read it — recorded by the notebook as `official_test_iteration`
+  (Spacetime Gaussians, per scene) or `official_iterations` — next to its end and its
+  best, with the preparation time and the disk of the scene. It carries LPIPS with both
+  backbones (`official_lpips` is VGG, `official_lpips_alex` AlexNet): on N3DV the papers of
+  4DGS native-4D and Spacetime Gaussians report AlexNet.
+
+The grouped-bar figures size their bars from the number of methods, so four rows fit.
+With `GS_STUDY` unset the pipeline behaves exactly as it did before `study.py` existed.
 
 ## Adding a new method or scene
 
-1. Drop its output folder next to `4dgaussian_output/` etc., with the same
-   `<run>/benchmark/benchmark_*.json` layout.
-2. `aggregate.py` — add the folder to `METHOD_DIR` (folder name -> long label) and
-   `SHORT` (long label -> short tag).
-3. `common.py` — add the short tag to `C` (colour), `ORDER`, `LABEL`; add new scenes to
-   `SCENES` and `SCENE_LABEL`. Mark incomplete runs in `PARTIAL` and non-evaluable
-   method/scene pairs in `NOT_EVAL`; every figure honours both automatically.
-4. `fig_agg.py`, `fig_analysis.py`, `fig_fair.py` — `FAIR` lists the scenes used for the
-   aggregate means (those completed by every method). Update it.
-5. Re-run `./run_all.sh`.
+1. Drop its output folder next to `4dgaussian_output/` etc. (under the data root of its
+   study), with the same `<run>/benchmark/benchmark_*.json` layout.
+2. `study.py`, in the branch of that study: add the folder to `METHOD_DIR` (folder name ->
+   long label) and the long label to `SHORT` (-> short tag); add the short tag to `C`
+   (colour), `ORDER` and `LABEL`; add new scenes to `SCENES` and `SCENE_LABEL`; mark
+   incomplete runs in `PARTIAL` and non-evaluable method/scene pairs in `NOT_EVAL`; update
+   `FAIR`, the scenes used for the aggregate means. Every figure honours all of it
+   automatically, and the grouped bars are centred for any number of methods.
+3. Re-run `./run_all.sh` (with the `GS_ROOT` / `GS_STUDY` of that study).
 
 Colours come from a colourblind-safe categorical palette; the first three slots
-(blue / orange / aqua) are validated for all-pairs separation. Keep new methods on the
-next slots of that palette rather than picking free-hand hues.
+(blue / orange / aqua) are validated for all-pairs separation and the fourth
+(reddish purple) is the next slot of the same palette, used by the second Spacetime
+Gaussians variant. Keep new methods on the
+following slots rather than picking free-hand hues. The two methods that appear in
+both studies keep their hue across them.
 
 ## Conventions baked into the numbers
 

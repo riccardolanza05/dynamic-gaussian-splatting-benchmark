@@ -12,12 +12,12 @@ def val(tab, m, s, col):
 
 def grouped_bar(getter, ylabel, title, name, mode="iterations", fmt="{:.2f}",
                 lower_better=False, logy=False, note_extra="", scenes=SCENES, annotate=True):
-    x = np.arange(len(scenes)); w = 0.26
+    x = np.arange(len(scenes)); w = BAR_W
     fig, ax = plt.subplots(figsize=(12.6,4.2))
     nanpos = []
     for i,m in enumerate(ORDER):
         vals = [getter(m,s) for s in scenes]
-        pos  = x + (i-1)*w
+        pos  = x + (i-(len(ORDER)-1)/2)*w
         hatch = ["///" if is_partial(m,s,mode) else "" for s in scenes]
         for xi,v,h,s in zip(pos, vals, hatch, scenes):
             if np.isnan(v):
@@ -46,29 +46,27 @@ def grouped_bar(getter, ylabel, title, name, mode="iterations", fmt="{:.2f}",
 
 # ---------- ISO-ITERATIONS: best metric of each run ----------
 grouped_bar(lambda m,s: val(IT,m,s,"best_psnr"), "Best PSNR (dB)",
-    "Best PSNR per scene — equal-iteration budget (30k total iterations)",
+    "Best PSNR per scene — %s %s" % (PA_BUDGET, PA_TOTAL),
     "11_iso_iters_best_psnr", fmt="{:.2f}")
 grouped_bar(lambda m,s: val(IT,m,s,"best_ssim"), "Best SSIM",
-    "Best SSIM per scene — equal-iteration budget", "12_iso_iters_best_ssim", fmt="{:.4f}")
+    "Best SSIM per scene — %s" % PA_BUDGET, "12_iso_iters_best_ssim", fmt="{:.4f}")
 grouped_bar(lambda m,s: val(IT,m,s,"best_lpips"), "Best LPIPS (VGG)",
-    "Best LPIPS per scene — equal-iteration budget", "13_iso_iters_best_lpips",
+    "Best LPIPS per scene — %s" % PA_BUDGET, "13_iso_iters_best_lpips",
     fmt="{:.4f}", lower_better=True)
 grouped_bar(lambda m,s: val(IT,m,s,"best_eval_l1_loss"), "Best eval L1 loss",
-    "Best evaluation L1 loss per scene — equal-iteration budget", "14_iso_iters_best_l1",
+    "Best evaluation L1 loss per scene — %s" % PA_BUDGET, "14_iso_iters_best_l1",
     fmt="{:.4f}", lower_better=True)
 grouped_bar(lambda m,s: val(IT,m,s,"best_psnr_iter"), "Iteration of best PSNR",
-    "Iteration at which the best PSNR is reached — equal-iteration budget",
+    "Iteration at which the best PSNR is reached — %s" % PA_BUDGET,
     "15_iso_iters_argmax_psnr", fmt="{:.0f}", lower_better=True)
 
 # ---------- ISO-LOSS: run stops at the same per-scene L1 target ----------
-BSNOTE = ("Measured at the first crossing of the target, not at run termination. "
-          "4DGS native-4D uses the per-scene batch sizes of its own repository (1-24), so its iteration "
-          "counts are not directly comparable: see the training-samples figure (38).")
+# BSNOTE (how to read the iteration counts of this study) comes from study.py.
 grouped_bar(lambda m,s: val(LO,m,s,"fc_total_iterations"), "Iterations to target",
     "Optimisation steps needed to reach the common per-scene L1 target", "16_iso_loss_iters_to_target",
     mode="target_eval_loss", fmt="{:.0f}", lower_better=True, note_extra=BSNOTE)
 grouped_bar(lambda m,s: val(LO,m,s,"fc_training_time_s"), "Training time to target (s)",
-    "Wall-clock training time to reach the common per-scene L1 target (Tesla T4)",
+    "Wall-clock training time to reach the common per-scene L1 target (%s)" % GPU,
     "17_iso_loss_time_to_target", mode="target_eval_loss", fmt="{:.0f}", lower_better=True, note_extra=BSNOTE)
 grouped_bar(lambda m,s: val(LO,m,s,"fc_psnr"), "PSNR at target (dB)",
     "PSNR at the first crossing of the common per-scene L1 target",
@@ -90,10 +88,10 @@ grouped_bar(lambda m,s: val(LO,m,s,"fc_lpips"), "LPIPS at target",
 
 # ---------- cost ----------
 grouped_bar(lambda m,s: val(IT,m,s,"peak_vram_mb"), "Peak VRAM (MB)",
-    "Peak GPU memory during the equal-iteration runs (nvidia-smi, Tesla T4)",
+    "Peak GPU memory during the %s (nvidia-smi, %s)" % (PA_RUNS, GPU),
     "22_peak_vram_iters", fmt="{:.0f}", lower_better=True)
 grouped_bar(lambda m,s: (val(IT,m,s,"final_training_time_s")/max(val(IT,m,s,"final_total_iterations"),1))*1000,
-    "Seconds per 1000 iterations", "Training throughput — seconds per 1000 iterations (Tesla T4)",
+    "Seconds per 1000 iterations", "Training throughput — seconds per 1000 iterations (%s)" % GPU,
     "23_throughput_s_per_1k", fmt="{:.1f}", lower_better=True)
 grouped_bar(lambda m,s: 100*val(IT,m,s,"final_benchmark_overhead_s")/max(val(IT,m,s,"final_wall_time_s"),1e-9),
     "Benchmark overhead (% of wall time)", "Cost of the periodic evaluation inside the run",

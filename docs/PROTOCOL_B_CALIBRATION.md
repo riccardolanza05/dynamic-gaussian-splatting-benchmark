@@ -1,5 +1,7 @@
 # Protocol B: calibration of the evaluation-loss (L1) targets
 
+This page covers the **monocular** study (D-NeRF, notebooks `01`–`03`). The multi-view study (N3DV, notebooks `05`–`07`) uses the same rule; its section is at the bottom and is empty until its Protocol A loops have run.
+
 Derived from the Protocol A `benchmark_iterations.json` files of the three methods (800×800, black background, 20 test views, LPIPS-VGG, Tesla T4).
 
 ## Rule
@@ -49,3 +51,32 @@ Indicative totals for the full loop, before hysteresis: Deformable-3DGS about 1.
 `TRAINING_MODE = "target_eval_loss"`, `EVAL_EVERY_N_MINUTES = 0.5`, `MIN_ITERATIONS_BEFORE_STOP = 1000`, `TARGET_CONSECUTIVE_HITS = 2`, `SAFETY_MAX_ITERATIONS = 60000`, `TARGET_METRIC = "eval_loss"`, `EVAL_LOSS_KIND = "l1"`, `MAX_EVAL_VIEWS = 0`, `KEEP_MODEL_ON_DRIVE = False`.
 
 The notebooks ship with `TRAINING_MODE = "iterations"` (Protocol A); switch it to `"target_eval_loss"` to run Protocol B. The time to report is the **first crossing** of the target, not the termination; cell 4.4 extracts it.
+
+---
+
+## Multi-view study (Neural 3D Video)
+
+The same rule, three methods:
+
+    target(scene) = 1.05 x max over methods ( minimum eval_l1_loss on the method's test curve )
+
+evaluated at 1352x1014 on the views of the held-out camera `cam00`, on the single GPU type chosen for the whole study (see [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §4). The protocol parameters are those of the monocular study (`EVAL_EVERY_N_MINUTES = 0.5`, `MIN_ITERATIONS_BEFORE_STOP = 1000`, `TARGET_CONSECUTIVE_HITS = 2`, `SAFETY_MAX_ITERATIONS = 60000`, `TARGET_METRIC = "eval_loss"`, `EVAL_LOSS_KIND = "l1"`, `MAX_EVAL_VIEWS = 0`), and the figure to report is again the **first crossing**.
+
+Three things differ from the monocular case.
+
+* **The Protocol A curves have different lengths.** Each method runs at its official N3DV budget (3 000 + 14 000 steps for 4DGaussians, 30 000 for the other two), not at a common 30 000. The rule never assumed equal budgets: it needs every method to have reached the minimum it is credited with, which holds for a curve of any length. The bar is the worst of the methods' bests, each run as its authors run it.
+* **Protocol B is calibrated and run on the 50-frame window**, over the first 50 frames of each scene (50 test views). There every method is a single model. On the 300-frame window Spacetime Gaussians is six independent models, for which a first crossing is not defined; whether and how to carry Protocol B there is open ([OPEN_DECISIONS_MULTIVIEW.md](OPEN_DECISIONS_MULTIVIEW.md) §7). Targets belong to the window they were calibrated on.
+* **Spacetime Gaussians has up to two curves per scene**, one per variant (`ours_lite`, `ours_full`). Each variant that is run is a method for the purpose of the rule. Its minimum is taken over the whole 30 000-step curve, as for the other methods, not over the curve cut at the snapshot its own configs evaluate.
+
+### Values (50-frame window)
+
+| scene | 4DGaussians | 4DGS native-4D | Spacetime Gaussians lite | Spacetime Gaussians full | binding | target (x1.05) |
+|---|---|---|---|---|---|---|
+| coffee_martini | - | - | - | - | - | **not calibrated** |
+| cook_spinach | - | - | - | - | - | **not calibrated** |
+| cut_roasted_beef | - | - | - | - | - | **not calibrated** |
+| flame_salmon_1 | - | - | - | - | - | **not calibrated** |
+| flame_steak | - | - | - | - | - | **not calibrated** |
+| sear_steak | - | - | - | - | - | **not calibrated** |
+
+**The targets are empty on purpose.** They are derived from Protocol A results and no multi-view Protocol A run exists yet. `TARGET_EVAL_LOSS_PER_SCENE` therefore ships as `None` for every scene in notebooks `05`-`07`, and with `None` the Protocol B loop skips the scene instead of training against an invented bar. To fill the table: run the Protocol A loop of the three notebooks with `NUM_FRAMES=50` (notebook `07` once per variant), read the candidates printed by cell 4.3 of each, take the per-scene maximum, and paste the same dictionary into all three.
