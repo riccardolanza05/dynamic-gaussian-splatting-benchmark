@@ -9,7 +9,7 @@ The decisions keep their original numbers, because the code and the other docume
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | **lapsed** (method set aside, 2026-10-02) | — |
 | [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study. **Decided 2026-10-13**: Spacetime Gaussians covers it with **one model**; pilot run made and accepted (2026-10-14), upstream hyper-parameters (2a). Open: whether the 50-frame study is still run (2b) | `NUM_FRAMES = 300` by default; one model with `--set STG_BLOCK_FRAMES=300` (the default is still six blocks of 50) |
 | [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-13**: `ours_full` only. This replaces the choice of 2026-10-02 (both variants, as two rows) | `ours_lite` is still the notebook's default: the runs pass `--set STG_MODEL=ours_full` |
-| [4](#4-which-gpu) | Which GPU the whole study runs on | **open** — to be chosen from the smoke test, before the first real run | nothing: it is chosen when the machine is started |
+| [4](#4-which-gpu) | Which GPU the whole study runs on | **open**: the smoke and pilot runs used an L4; a cheaper machine with the same L4 for 4DGaussians and 4DGS native-4D is proposed, subject to a calibration run (2026-10-14) | nothing: it is chosen when the machine is started; host memory is recorded per run |
 | [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | Configuration of Dynamic 3D Gaussians on N3DV | **lapsed** (method set aside, 2026-10-02) | — |
 | [6](#6-the-protocol-a-budget) | Protocol A budget | **decided 2026-10-02**: each method at its official N3DV budget | 3 000 + 14 000 for 4DGaussians, 30 000 for the other two |
 | [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **settled 2026-10-13** by decision 2: with one Spacetime Gaussians model, Protocol B is defined on 300 frames for all three methods | notebook 07 accepts a Protocol B run when the window is one model; the targets are still empty |
@@ -261,6 +261,19 @@ Then `python3 scripts/estimate_gpu_hours.py <workdir>/bench_out/dgs-smoke` print
 **How far to trust it.** The training hours are a lower bound: a short run stops while the number of Gaussians is still growing (densification runs until step 9 000 for Spacetime Gaussians, 10 000 for 4DGaussians, 15 000 for 4DGS native-4D), and a step gets slower as they grow. A single complete run of the cheapest method is the way to see by how much.
 
 **Recommendation:** a 24 GB card, stated wherever the results are quoted, confirmed by the smoke test and by the budget available.
+
+### Update of 2026-10-14: the card is the L4; the open question is the machine around it
+
+The smoke test and the pilot runs were made on an L4 (lightning.ai `g6.4xlarge`: 16 vCPUs, 62 GB of host memory, 1.68 credits per hour). They measured peaks of 4.2 GB of VRAM for 4DGaussians, 5.2 GB for Spacetime Gaussians and 3.0 GB for 4DGS native-4D (the last from a 2 000-step smoke run, before its densification ends). Two consequences:
+
+* **A 16 GB card would hold the models, but not save credits.** The T4 machines have 16 or 31 GB of host memory, against the about 24.5 GB of images Spacetime Gaussians holds in it (decision 2), and a T4 has about a quarter of an L4's arithmetic throughput. At 1.04 credits per hour a T4 saves money only if it is less than 1.6 times slower; that was not measured, and is not expected.
+* **The same L4 is offered on a cheaper machine**: `g2-standard-8` on the provider's GCP cluster, 8 vCPUs and 31 GB of host memory, 0.79 credits per hour. Its host memory is enough for 4DGaussians and 4DGS native-4D, which read their images from disk, and not for Spacetime Gaussians.
+
+**Proposed by the study owner (2026-10-14): the cheaper machine for 4DGaussians and 4DGS native-4D, the 62 GB one for Spacetime Gaussians, and every method's host memory reported.** The GPU is the same model in both, so quality and peak VRAM are unaffected; host memory that a method does not use does not change its run. What does differ is the rest of the host: 8 vCPUs instead of 16, another processor and another cloud provider. Those can change the training time a little, through the processes that read and decode the training images (16 for 4DGaussians, 12 for 4DGS native-4D), although at the measured speeds the two methods need 11–14 images a second, well within 8 cores. The notebooks now record the peak host memory of every run (`peak_host_ram_mb_pss`, the proportional set size of the training process and its workers, so that memory shared by forked workers is counted once).
+
+* **Condition:** a calibration run before adopting it: the same short run of one method on both machines, to measure the difference in seconds per step. If it is within a few percent it is declared next to the times; if not, all three methods stay on the 62 GB machine.
+* **Saving:** about 0.89 credits per hour on the two methods' share of Protocol A, about 27 hours: roughly 25 credits.
+* **What it needs:** a second Studio on the GCP cluster (a Studio runs on one cluster), with its own copy of the environment and of the two methods' prepared scenes.
 
 ---
 

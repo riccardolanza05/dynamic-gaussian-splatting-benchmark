@@ -14,7 +14,7 @@ Choices — taken or still open — are in [OPEN_DECISIONS_MULTIVIEW.md](OPEN_DE
 | [6](#6-upstream-code-changed-in-two-notebooks) | Two notebooks go beyond the monitor hook | the "official code unchanged" claim |
 | [7](#7-corrections-made-before-the-study-runs) | Corrections made before the study runs | what earlier versions of these documents said |
 | [8](#8-a-method-was-set-aside-without-being-run) | A method was set aside without being run | what the study does not cover |
-| [9](#9-no-real-time-viewer-in-notebooks-0507) | No real-time viewer in notebooks 05–07 | nothing measured |
+| [9](#9-videos-instead-of-a-real-time-viewer-in-notebooks-0507) | Videos instead of a real-time viewer in notebooks 05–07 | nothing measured |
 
 ---
 
@@ -87,7 +87,7 @@ The six-block layout is still in the code (`STG_BLOCK_FRAMES = 50`, the default)
 
 **Why a generator.** The three multi-view notebooks must share the core of the benchmark monitor *byte for byte* — that is what makes "the same methodology" a checkable property — along with the configuration, path-resolution, dataset, driver and reporting cells. Hand-maintained copies of a 300-line monitor drift; a generator cannot.
 
-**What it guarantees.** The generator ships with a check suite (256 checks) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
+**What it guarantees.** The generator ships with a check suite (273 checks, 270 where numpy is missing) which verifies, without a GPU or the dataset, that each notebook is valid nbformat-4 JSON, that every code cell compiles as Python, that the generated `benchmark_monitor.py` compiles, **that the monitor core is byte-identical across the three**, that each glue block defines all ten hooks the core calls, that the configuration cells execute standalone and honour every command-line override, that each notebook ships its method's official budget and a sampling grid of about 30 points, that the default window is the 300-frame one, that a run from a different frame window is never silently reused, that notebook 07 trains a 300-frame window as six blocks and merges them as defined, and that `_Monitor.step()` produces a well-formed entry against a stubbed repository.
 
 **What it does not guarantee.** The checks execute nothing that needs CUDA, COLMAP or the N3DV dataset: they say the notebooks are structurally sound and consistent with one another. That they run end to end was established separately, by smoke runs of one scene on a cloud GPU on 2026-10-09 (§7), which found and fixed a number of defects the checks could not see. Only one scene was run, with short budgets, so the other five scenes and the full budgets remain untested.
 
@@ -163,9 +163,22 @@ Dynamic 3D Gaussians (Luiten et al.) was part of the study, with its own noteboo
 
 ---
 
-## 9. No real-time viewer in notebooks 05–07
+## 9. Videos instead of a real-time viewer in notebooks 05–07
 
 **What.** Notebooks 01–03 have a WebSocket streaming viewer that renders the trained model interactively. Notebooks 05–07 do not: their Part 2 is section 5 (rendering and final metrics) and section 6 (MP4 export of the held-out view, side by side with the ground truth).
+
+**Videos at the end of every run** (`RENDER_VIDEOS = True`, the default). When a run ends, four videos of its final model are written to `<run>/videos/`, with the results:
+
+| Video | Camera | Time |
+|---|---|---|
+| `heldout_vs_gt.mp4` | the held-out camera, next to the ground truth | the whole window |
+| `novel_fixed_view.mp4` | fixed, halfway between the held-out camera and its nearest rig camera: a view no camera saw | the whole window |
+| `rig_sweep.mp4` | sweeps across the camera rig and back | the whole window |
+| `bullet_time.mp4` | sweeps across the rig and back | frozen at the middle of the window |
+
+The camera paths are this project's code (`bench_orbits.py`, written by the notebooks), and they are the same physical paths for the three methods: they interpolate between the cameras of the rig, and the three methods' world frames differ by a similarity transform, which interpolation commutes with. Each method renders them with its own renderer and its final model, loaded as its own rendering script loads it (for Spacetime Gaussians, upstream's `test.py` with its `render_set` replaced). Each script first checks that its pose arithmetic reproduces the repository's own held-out camera. N3DV is a forward-facing rig, so the paths stay within the span of the cameras; outside it there is nothing to reconstruct from.
+
+The videos are for looking at the results. Nothing measured comes from them, and their rendering time is recorded apart from the training time (`video_render_time_s`). The scripts have not yet run on a GPU: their first run is the first scene of the study.
 
 **Why.** The viewer contributes nothing to any measurement, it is the most repository-specific code in the monocular notebooks, and an N3DV model at 1352×1014 is a poor fit for streaming from a cloud runtime.
 

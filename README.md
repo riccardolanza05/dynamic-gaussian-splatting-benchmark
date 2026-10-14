@@ -157,6 +157,7 @@ Notebook 07 is run as the study runs Spacetime Gaussians, one full model on the 
 ```bash
 --set STG_MODEL=ours_full --set STG_BLOCK_FRAMES=300   # notebook 07, as in the study (defaults: ours_lite, six 50-frame blocks)
 --set PREPARE_ONLY=true             # prepare a scene (frames, COLMAP) on a CPU machine, no training
+--set RENDER_VIDEOS=false           # skip the four videos rendered into <run>/videos/ at the end of a run
 --set TRAINING_MODE=target_eval_loss   # Protocol B, once calibrated
 --set NUM_FRAMES=50                 # the 50-frame study (default: 300)
 ```
