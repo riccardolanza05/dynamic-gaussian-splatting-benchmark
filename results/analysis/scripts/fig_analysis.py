@@ -6,7 +6,7 @@ from matplotlib.colors import TwoSlopeNorm, LinearSegmentedColormap
 R = runs.copy()
 IT = R[R["mode"]=="iterations"].set_index(["method_short","scene"])
 LO = R[R["mode"]=="target_eval_loss"].set_index(["method_short","scene"])
-FAIR = ["bouncingballs","hellwarrior","hook","mutant","standup"]   # complete for all 3 methods
+from study import FAIR   # scenes completed by every method of the active study
 BLUE = LinearSegmentedColormap.from_list("b",["#cde2fb","#9ec5f4","#5598e7","#2a78d6","#184f95","#0d366b"])
 DIV  = LinearSegmentedColormap.from_list("d",["#d03b3b","#f0efec","#2a78d6"])
 
@@ -36,10 +36,10 @@ for ax,(col,tit,fmt,low) in zip(axes.ravel(), specs):
             ax.text(j,i,txt,ha="center",va="center",fontsize=7.6,color=colr,fontweight=wt)
     ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES],
                   rotation=25, ha="right", fontsize=7.5, color=INK2)
-    ax.set_yticks(range(3)); ax.set_yticklabels(ORDER, fontsize=8, color=INK2)
+    ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=8, color=INK2)
     ax.set_title(tit+("  (lower is better)" if low else ""), color=INK, loc="left", fontweight="bold", fontsize=9.5)
     ax.tick_params(length=0); [sp.set_visible(False) for sp in ax.spines.values()]
-fig.suptitle("Per-scene comparison at an equal iteration budget — colour = rank within the scene (dark = best)",
+fig.suptitle("Per-scene comparison %s — colour = rank within the scene (dark = best)" % PA_AT,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.03)
 fig.tight_layout(); savefig(fig,"25_heatmap_iso_iterations", CAVEAT)
 
@@ -47,22 +47,24 @@ fig.tight_layout(); savefig(fig,"25_heatmap_iso_iterations", CAVEAT)
 fig, ax = plt.subplots(figsize=(12.4,3.2))
 M = np.array([[val(IT,m,s,"best_psnr") for s in SCENES] for m in ORDER])
 D = M - np.nanmax(M,axis=0, keepdims=True)
-im = ax.imshow(D, cmap=DIV, norm=TwoSlopeNorm(vmin=np.nanmin(D), vcenter=0, vmax=0.001), aspect="auto")
-for i in range(3):
+im = ax.imshow(D, cmap=DIV, norm=TwoSlopeNorm(vmin=min(np.nanmin(D), -1e-6), vcenter=0, vmax=0.001), aspect="auto")
+for i in range(len(ORDER)):
     for j in range(len(SCENES)):
         v=D[i,j]
         ax.text(j,i,"n/a" if np.isnan(v) else ("best" if v==0 else f"{v:+.2f}"),
                 ha="center",va="center",fontsize=8,color=INK if (np.isnan(v) or v>-4) else "#ffffff",
                 fontweight="bold" if v==0 else "normal")
 ax.set_xticks(range(len(SCENES))); ax.set_xticklabels([SCENE_LABEL[s] for s in SCENES], fontsize=8.5, color=INK2)
-ax.set_yticks(range(3)); ax.set_yticklabels(ORDER, fontsize=9, color=INK2); ax.tick_params(length=0)
+ax.set_yticks(range(len(ORDER))); ax.set_yticklabels(ORDER, fontsize=9, color=INK2); ax.tick_params(length=0)
 [sp.set_visible(False) for sp in ax.spines.values()]
-fig.suptitle("PSNR gap to the best method on each scene (dB) — equal-iteration budget",
+fig.suptitle("PSNR gap to the best method on each scene (dB) — %s" % PA_BUDGET,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.06)
 fig.tight_layout(); savefig(fig,"26_psnr_gap_to_best", CAVEAT)
 
 # ---- 27: peak & degradation analysis ----
-fig, axes = plt.subplots(1,3, figsize=(13.2,4.1), sharey=True)
+fig, axes = plt.subplots(1,len(ORDER), figsize=(13.2 if len(ORDER)<=3 else 4.4*len(ORDER),4.1),
+                         sharey=True, squeeze=False)
+axes = axes[0]
 for ax,m in zip(axes,ORDER):
     for s in SCENES:
         d = cur(m,s,"iterations")
@@ -76,19 +78,19 @@ for ax,m in zip(axes,ORDER):
     ax.set_xlabel("Training iterations", fontsize=8)
     ax.xaxis.set_major_formatter(lambda v,p: f"{v/1000:g}k" if v>=1000 else f"{v:g}")
 axes[0].set_ylabel("PSNR − peak PSNR of the run (dB)")
-fig.suptitle("Post-peak behaviour: 4DGS native-4D peaks within the first thousands of iterations and then degrades",
+fig.suptitle(TITLE27,
              color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.02)
 fig.tight_layout(); savefig(fig,"27_peak_and_degradation", CAVEAT+" One line per scene.")
 
 # ---- 28: peak iteration vs drop at 30k ----
 fig, axes = plt.subplots(1,2, figsize=(12.6,4.0))
-x = np.arange(len(SCENES)); w=0.26
+x = np.arange(len(SCENES)); w=BAR_W
 for i,m in enumerate(ORDER):
     pk  = [val(IT,m,s,"best_psnr_iter") for s in SCENES]
     drp = [val(IT,m,s,"best_psnr")-val(IT,m,s,"final_psnr") for s in SCENES]
-    axes[0].bar(x+(i-1)*w, pk, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
+    axes[0].bar(x+(i-(len(ORDER)-1)/2)*w, pk, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
                 hatch=["///" if is_partial(m,s,"iterations") else "" for s in SCENES], zorder=3)
-    axes[1].bar(x+(i-1)*w, drp, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
+    axes[1].bar(x+(i-(len(ORDER)-1)/2)*w, drp, w*0.92, color=C[m], edgecolor=SURF, lw=1.2,
                 hatch=["///" if is_partial(m,s,"iterations") else "" for s in SCENES], zorder=3)
 for ax,t,yl in zip(axes,["Iteration of peak PSNR","PSNR lost between peak and end of run"],
                    ["Iteration","Peak PSNR − final PSNR (dB)"]):
@@ -108,8 +110,8 @@ fig, axes = plt.subplots(1,2, figsize=(12.8,4.0))
 for k,(th,ax) in enumerate(zip([25,30],axes)):
     for i,m in enumerate(ORDER):
         v=[first_reach(m,s,th) for s in SCENES]
-        ax.bar(x+(i-1)*w, v, w*0.92, color=C[m], edgecolor=SURF, lw=1.2, zorder=3)
-        for xi,vv,s in zip(x+(i-1)*w, v, SCENES):
+        ax.bar(x+(i-(len(ORDER)-1)/2)*w, v, w*0.92, color=C[m], edgecolor=SURF, lw=1.2, zorder=3)
+        for xi,vv,s in zip(x+(i-(len(ORDER)-1)/2)*w, v, SCENES):
             if np.isnan(vv):
                 ax.text(xi, 200, "never" if not cur(m,s,"iterations").empty else "n/a",
                         rotation=90, fontsize=7, color=MUTED, ha="center", va="bottom", style="italic")
@@ -117,7 +119,7 @@ for k,(th,ax) in enumerate(zip([25,30],axes)):
     ax.set_ylabel("Iterations"); ax.grid(True, axis="y", alpha=0.9); ax.set_axisbelow(True)
     ax.set_title(f"Iterations to first reach PSNR ≥ {th} dB", color=INK, loc="left", fontweight="bold", fontsize=10)
 method_legend(fig, y=1.06)
-fig.tight_layout(); savefig(fig,"29_iterations_to_psnr_threshold", CAVEAT+" Evaluation grid: every 1000 iterations.")
+fig.tight_layout(); savefig(fig,"29_iterations_to_psnr_threshold", CAVEAT+GRID_NOTE)
 
 # ---- 30: quality vs cost scatter (iso-iterations) ----
 fig, axes = plt.subplots(1,2, figsize=(13.0,4.6))
@@ -137,10 +139,10 @@ for m in ORDER:
         axes[1].scatter(t/60, q, s=60, color=C[m], alpha=0.85, edgecolor=SURF, linewidth=1.2, zorder=3)
         axes[1].annotate(SCENE_LABEL[s], (t/60,q), fontsize=6.5, color=MUTED,
                          xytext=(4,4), textcoords="offset points")
-axes[0].set_title("Equal-iteration budget — marker size ∝ peak VRAM", color=INK, loc="left", fontweight="bold", fontsize=10)
+axes[0].set_title("%s — marker size ∝ peak VRAM" % PA_BUDGET_CAP, color=INK, loc="left", fontweight="bold", fontsize=10)
 axes[1].set_title("Equal-L1-target budget", color=INK, loc="left", fontweight="bold", fontsize=10)
 for ax in axes:
-    ax.set_xlabel("Training time (minutes, Tesla T4)"); ax.set_ylabel("Best PSNR (dB)")
+    ax.set_xlabel("Training time (minutes, %s)" % GPU); ax.set_ylabel("Best PSNR (dB)")
     ax.grid(True, alpha=0.9); ax.set_axisbelow(True)
 method_legend(fig, y=1.06)
 fig.suptitle("Quality against compute cost", color=INK, fontsize=12.5, fontweight="bold", x=0.012, ha="left", y=1.14)

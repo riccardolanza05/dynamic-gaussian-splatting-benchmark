@@ -9,7 +9,13 @@ Run export_web.py first so dashboard_data.json is up to date.
 import argparse, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT  = os.path.dirname(HERE)                       # .../analysis
+# Honour GS_ROOT like every other script in the pipeline, so that a second study
+# (GS_ROOT=.../n3dv GS_STUDY=n3dv) writes its dashboard next to its own data
+# instead of overwriting the one of the monocular study.
+ROOT = os.environ.get("GS_ROOT") or os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, HERE)
+from study import ANALYSIS_DIR
+OUT  = os.path.join(ROOT, ANALYSIS_DIR)            # .../analysis (analysis_f50 for n3dv_f50)
 CDN  = '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>'
 
 ap = argparse.ArgumentParser()
