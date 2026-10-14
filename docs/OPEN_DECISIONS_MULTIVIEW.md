@@ -2,14 +2,14 @@
 
 The multi-view extension rests on a number of **judgement calls, not facts**. This page lists them: what was decided and why, what is still open, and what each alternative would cost. Each entry says what is implemented today, so that a decision is taken with the trade-off in view and not discovered when the tables are already built.
 
-The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02 and one on 2026-10-09. **On 2026-10-13 the budget was faced: Spacetime Gaussians is run as one `ours_full` model on the whole 300-frame window, not as six 50-frame models in two variants** (decisions 2 and 3). That settles decisions 3, 7 and 8. The pilot run it was conditional on was made on 2026-10-13 and accepted on 2026-10-14, with upstream's hyper-parameters (sub-point 2a). Still open: the 50-frame study (2b) and, new, how many views Protocol B evaluates (decision 10). Two earlier decisions lapsed because the method they concerned was set aside. For each open one the table says when it will be taken.
+The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02 and one on 2026-10-09. **On 2026-10-13 the budget was faced: Spacetime Gaussians is run as one `ours_full` model on the whole 300-frame window, not as six 50-frame models in two variants** (decisions 2 and 3). That settles decisions 3, 7 and 8. The pilot run it was conditional on was made on 2026-10-13 and accepted on 2026-10-14, with upstream's hyper-parameters (sub-point 2a). On 2026-10-14 the GPU was fixed (decision 4: one L4 machine and the existing Studio's software for the whole study). Still open: the 50-frame study (2b) and, new, how many views Protocol B evaluates (decision 10). Two earlier decisions lapsed because the method they concerned was set aside. For each open one the table says when it will be taken.
 
 | # | Decision | Status | Implemented today |
 |---|---|---|---|
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | **lapsed** (method set aside, 2026-10-02) | — |
 | [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study. **Decided 2026-10-13**: Spacetime Gaussians covers it with **one model**; pilot run made and accepted (2026-10-14), upstream hyper-parameters (2a). Open: whether the 50-frame study is still run (2b) | `NUM_FRAMES = 300` by default; one model with `--set STG_BLOCK_FRAMES=300` (the default is still six blocks of 50) |
 | [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-13**: `ours_full` only. This replaces the choice of 2026-10-02 (both variants, as two rows) | `ours_lite` is still the notebook's default: the runs pass `--set STG_MODEL=ours_full` |
-| [4](#4-which-gpu) | Which GPU the whole study runs on | **open**: the smoke and pilot runs used an L4; a cheaper machine with the same L4 for 4DGaussians and 4DGS native-4D is proposed, subject to a calibration run (2026-10-14) | nothing: it is chosen when the machine is started; host memory is recorded per run |
+| [4](#4-which-gpu) | Which GPU the whole study runs on | **decided 2026-10-14**: one NVIDIA L4 (24 GB) machine, lightning.ai `g6.4xlarge` (16 vCPUs, 62 GB of host memory), the existing Studio and its environment (Python 3.12.11, PyTorch 2.8.0+cu128), for all three methods | chosen when the machine is started; host memory is recorded per run |
 | [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | Configuration of Dynamic 3D Gaussians on N3DV | **lapsed** (method set aside, 2026-10-02) | — |
 | [6](#6-the-protocol-a-budget) | Protocol A budget | **decided 2026-10-02**: each method at its official N3DV budget | 3 000 + 14 000 for 4DGaussians, 30 000 for the other two |
 | [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **settled 2026-10-13** by decision 2: with one Spacetime Gaussians model, Protocol B is defined on 300 frames for all three methods | notebook 07 accepts a Protocol B run when the window is one model; the targets are still empty |
@@ -204,7 +204,7 @@ If both are too expensive, `ours_lite` alone. The comparison with the paper surv
 
 **Where:** not in the code — it is what you select when you start the machine. See also the [running notes in the README](../README.md#running-on-a-cloud-gpu-over-ssh).
 
-**Open. It will be chosen from the smoke test, before the first real run.**
+**Decided 2026-10-14: one L4 machine for the whole study** — lightning.ai `g6.4xlarge`, NVIDIA L4 with 24 GB, 16 vCPUs, 62 GB of host memory, 1.68 credits per hour — on the Studio where the smoke and pilot runs were made, whose software (Python 3.12.11, PyTorch 2.8.0 built for CUDA 12.8) is the one the notebooks were tested on. The reasons are in the update at the end of this section. It was first open, to be chosen from the smoke test.
 
 ### Why this is a decision and not a detail
 
@@ -274,6 +274,13 @@ The smoke test and the pilot runs were made on an L4 (lightning.ai `g6.4xlarge`:
 * **Condition:** a calibration run before adopting it: the same short run of one method on both machines, to measure the difference in seconds per step. If it is within a few percent it is declared next to the times; if not, all three methods stay on the 62 GB machine.
 * **Saving:** about 0.89 credits per hour on the two methods' share of Protocol A, about 27 hours: roughly 25 credits.
 * **What it needs:** a second Studio on the GCP cluster (a Studio runs on one cluster), with its own copy of the environment and of the two methods' prepared scenes.
+
+**What the attempt of 2026-10-14 found: the software differs, not only the machine.** A Studio created that day on the GCP cluster came with Python 3.14 and PyTorch 2.14 built for CUDA 13.0, while the Studio of the smoke and pilot runs has Python 3.12 and PyTorch 2.8 built for CUDA 12.8. A Studio has one conda environment and cannot create another, and PyTorch 2.8 has no build for Python 3.14, so the older stack cannot be installed there. A timing comparison between the two would measure the software as well as the machine, so it was stopped before installing anything (about 0.3 credits spent).
+
+Two consequences:
+
+* **The cheaper machine is not usable as proposed**: the methods would run on a different PyTorch and CUDA from the third, which is a larger difference than the host, and the notebooks' CUDA builds (and `mmcv` for Spacetime Gaussians) have only been tested on the older stack.
+* **The same holds for any new Studio, on any cluster**: Studios are created from the current image. The whole study should run on the existing Studio, whose environment is the one tested, and the versions should be stated with the results (Python 3.12.11, PyTorch 2.8.0+cu128).
 
 ---
 
@@ -535,7 +542,7 @@ The title of the paper is *"Tracking by Persistent Dynamic View Synthesis"*: its
 
 ## How the decisions interact
 
-* **The order in which the open ones are taken**: the GPU (4) before the six scenes (the smoke test and the pilot ran on an L4); how many views Protocol B evaluates (10) before the Protocol B runs; the 50-frame study (2b) when the budget left after the main study is known.
+* **The order in which the open ones are taken**: how many views Protocol B evaluates (10) before the Protocol B runs; the 50-frame study (2b) when the budget left after the main study is known.
 * **2, 3 and 7 hung on the pilot run**, which was accepted on 2026-10-14: one `ours_full` model on 300 frames is what makes the study affordable and gives the main window its Protocol B.
 * **7 and 10.** Protocol B on 300 frames is defined; what it costs depends on decision 10.
 * **2 and 4.** The long model needs about 26 GB of host memory for its images; the machine chosen has to have it.
