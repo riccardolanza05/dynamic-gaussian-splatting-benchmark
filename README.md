@@ -152,23 +152,23 @@ python3 scripts/run_benchmark.py notebooks/05_4dgaussians_wu_n3dv.ipynb \
 
 That executes Part 1 of the notebook (Part 2 renders and would compete for the GPU), trains the scenes one after another on the 300-frame window, and saves the executed notebook under `logs/`. Each finished result is copied with `rclone` (remote `gdrive` by default) to **one shared Google Drive folder**, `dgs-benchmark-n3dv`, which gathers the JSON of all the methods in the layout the analysis pipeline reads. The loop is resumable: rerunning the same command skips the scenes that already finished.
 
-The other runs of the study are the same command with one more setting:
+Notebook 07 is run as the study runs Spacetime Gaussians, one full model on the 300 frames, and the other runs are the same command with one more setting:
 
 ```bash
+--set STG_MODEL=ours_full --set STG_BLOCK_FRAMES=300   # notebook 07, as in the study (defaults: ours_lite, six 50-frame blocks)
+--set PREPARE_ONLY=true             # prepare a scene (frames, COLMAP) on a CPU machine, no training
+--set TRAINING_MODE=target_eval_loss   # Protocol B, once calibrated
 --set NUM_FRAMES=50                 # the 50-frame study (default: 300)
---set STG_MODEL=ours_full           # notebook 07: the second variant (default: ours_lite)
---set TRAINING_MODE=target_eval_loss   # Protocol B, on the 50-frame window, once calibrated
 ```
 
 Rules that keep the measurements valid:
 
 * **one GPU type for the whole study**, and **one run at a time** on it, because training time and peak VRAM are measured metrics and peak VRAM is read for the whole device;
-* Spacetime Gaussians' README asks for 24 GB of GPU memory on N3DV; on a 16 GB GPU it needs `--set EXTRA_TRAIN_ARGS="--gtisint8 1"` (ground-truth images held on the GPU as 8-bit integers, lossless for PNG frames);
+* Spacetime Gaussians' README asks for 24 GB of GPU memory on N3DV, because it holds the training images on the GPU. With `STG_BLOCK_FRAMES=300` the notebook holds them in host memory as 8-bit integers instead (about 24 GB of RAM; the L4 machine used has 62 GB); for 50-frame blocks on a 16 GB GPU, `--set EXTRA_TRAIN_ARGS="--gtisint8 1"`;
 * run notebook `05` first: it builds the COLMAP cache that `06` reuses;
-* to let the second Spacetime Gaussians variant reuse the per-frame COLMAP models of the first, run the first with `--set DELETE_FRAMES_AFTER_TRAIN=false`;
 * use `tmux` (or similar) so that a run survives a dropped SSH connection.
 
-**Start with a smoke test.** Nothing here has run on a GPU yet. A smoke test is a normal run of one scene, stopped early and written to its own folder:
+**Start with a smoke test.** The notebooks have run end to end on single scenes (smoke runs on 2026-10-09, pilot runs on 2026-10-13: [docs/DISCLOSURES_MULTIVIEW.md](docs/DISCLOSURES_MULTIVIEW.md) §7), but a new machine is best checked first. A smoke test is a normal run of one scene, stopped early and written to its own folder:
 
 ```bash
 python3 scripts/run_benchmark.py notebooks/05_4dgaussians_wu_n3dv.ipynb \
@@ -191,7 +191,7 @@ GS_ROOT="$(pwd)/../../n3dv" GS_STUDY=n3dv_f50 ./run_all.sh    # secondary study,
 
 writes the multi-view tables, figures and dashboard under `results/n3dv/analysis/` (and `analysis_f50/` for the 50-frame study), separately from the monocular ones.
 
-**Status.** No multi-view training run has been made yet: `results/n3dv/` is empty, the Protocol B targets ship as `None` (they are derived from Protocol A results, which do not exist yet), and there is no multi-view results table.
+**Status.** The study has not run yet (only smoke and pilot runs, which are not results): `results/n3dv/` is empty, the Protocol B targets ship as `None` (they are derived from Protocol A results, which do not exist yet), and there is no multi-view results table.
 
 ## Acknowledgements
 

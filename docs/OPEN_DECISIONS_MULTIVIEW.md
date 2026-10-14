@@ -2,19 +2,20 @@
 
 The multi-view extension rests on a number of **judgement calls, not facts**. This page lists them: what was decided and why, what is still open, and what each alternative would cost. Each entry says what is implemented today, so that a decision is taken with the trade-off in view and not discovered when the tables are already built.
 
-The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02 and one on 2026-10-09, two lapsed because the method they concerned was set aside, and three are open; for each open one the table says when it will be taken.
+The decisions keep their original numbers, because the code and the other documents refer to them by number. Three were taken on 2026-10-02 and one on 2026-10-09. **On 2026-10-13 the budget was faced: Spacetime Gaussians is run as one `ours_full` model on the whole 300-frame window, not as six 50-frame models in two variants** (decisions 2 and 3). That settles decisions 3, 7 and 8. The pilot run it was conditional on was made on 2026-10-13 and accepted on 2026-10-14, with upstream's hyper-parameters (sub-point 2a). Still open: the 50-frame study (2b) and, new, how many views Protocol B evaluates (decision 10). Two earlier decisions lapsed because the method they concerned was set aside. For each open one the table says when it will be taken.
 
 | # | Decision | Status | Implemented today |
 |---|---|---|---|
 | [1](#1-iteration-budget-of-dynamic-3d-gaussians) | Protocol A budget of Dynamic 3D Gaussians | **lapsed** (method set aside, 2026-10-02) | — |
-| [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study, 50 frames the secondary one | `NUM_FRAMES = 300` by default, `--set NUM_FRAMES=50` for the short window |
-| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-02**: both, as two rows; `ours_lite` alone if both cost too much. The threshold will be set after at least one scene has been run with `ours_full` | `ours_lite` by default, `--set STG_MODEL=ours_full` for the second row |
+| [2](#2-temporal-window) | Temporal window | **decided 2026-10-02**: 300 frames is the main study. **Decided 2026-10-13**: Spacetime Gaussians covers it with **one model**; pilot run made and accepted (2026-10-14), upstream hyper-parameters (2a). Open: whether the 50-frame study is still run (2b) | `NUM_FRAMES = 300` by default; one model with `--set STG_BLOCK_FRAMES=300` (the default is still six blocks of 50) |
+| [3](#3-which-spacetime-gaussians-model) | Spacetime Gaussians variant | **decided 2026-10-13**: `ours_full` only. This replaces the choice of 2026-10-02 (both variants, as two rows) | `ours_lite` is still the notebook's default: the runs pass `--set STG_MODEL=ours_full` |
 | [4](#4-which-gpu) | Which GPU the whole study runs on | **open** — to be chosen from the smoke test, before the first real run | nothing: it is chosen when the machine is started |
 | [5](#5-how-to-configure-dynamic-3d-gaussians-on-n3dv) | Configuration of Dynamic 3D Gaussians on N3DV | **lapsed** (method set aside, 2026-10-02) | — |
 | [6](#6-the-protocol-a-budget) | Protocol A budget | **decided 2026-10-02**: each method at its official N3DV budget | 3 000 + 14 000 for 4DGaussians, 30 000 for the other two |
-| [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **open** — to be taken after the Protocol A runs | Protocol B runs on the 50-frame window only |
-| [8](#8-a-temporally-subsampled-window) | A temporally subsampled window (one frame in six) | **open**, with no date: left open for now | not implemented |
+| [7](#7-protocol-b-on-the-300-frame-window) | Protocol B on the 300-frame window | **settled 2026-10-13** by decision 2: with one Spacetime Gaussians model, Protocol B is defined on 300 frames for all three methods | notebook 07 accepts a Protocol B run when the window is one model; the targets are still empty |
+| [8](#8-a-temporally-subsampled-window) | A temporally subsampled window (one frame in six) | **decided 2026-10-13**: not run | not implemented |
 | [9](#9-lpips-backend) | LPIPS: which code computes it | **decided 2026-10-09**: the module the three repositories bundle, which was verified to be the same in all three | `lpipsPyTorch` from each repository, VGG as `lpips` and AlexNet as `lpips_alex` |
+| [10](#10-how-many-views-protocol-b-evaluates) | How many views Protocol B evaluates to decide when to stop | **open** (2026-10-14), to be discussed with the project's collaborators before the Protocol B runs | all of them (300 views) |
 
 **Irreversible ones.** Changing the GPU (4) or the main window (2) after the runs means rerunning everything. The others are a knob, one notebook to rerun, extra runs in separate folders, or an analysis step.
 
@@ -39,7 +40,7 @@ Every method is scored on two axes: **quality** (PSNR, SSIM, LPIPS and L1 on the
 |---|---|---|
 | **4DGaussians (Wu)**, notebook 05 | One set of "canonical" 3D Gaussians plus a small network (HexPlane grid + MLP) that, given a time *t*, says how much to move, rotate and scale each Gaussian. | **One model for the whole sequence.** |
 | **4DGS native-4D (Fudan)**, notebook 06 | The Gaussians are four-dimensional: they have an extent in time too. Rendering instant *t* means "slicing" each 4D Gaussian into a 3D one. | **One model for the whole sequence.** |
-| **Spacetime Gaussians (Li)**, notebook 07 | Each Gaussian has an opacity that rises and fades over time and a polynomial trajectory. | One model, but **by construction it covers a block of 50 frames**: a 300-frame scene is six models. |
+| **Spacetime Gaussians (Li)**, notebook 07 | Each Gaussian has an opacity that rises and fades over time and a polynomial trajectory. | Its official configuration covers a block of 50 frames, and its paper covers 300 frames with six models. **This study trains one model on the 300 frames** (decision 2). |
 
 A fourth method, **Dynamic 3D Gaussians (Luiten)**, was part of the study until 2026-10-02. Why it was set aside is in [its own section](#dynamic-3d-gaussians-set-aside-2026-10-02).
 
@@ -50,6 +51,8 @@ A fourth method, **Dynamic 3D Gaussians (Luiten)**, was part of the study until 
 **Where:** cell 0.1 of the three notebooks, the variable `NUM_FRAMES`.
 
 **Decided 2026-10-02: the main study uses all 300 frames; a secondary study uses the first 50.**
+
+**Decided 2026-10-13: on the 300-frame window Spacetime Gaussians is trained as one model, not as six 50-frame models.** The reasons, the conditions and what it costs are in [its own section](#spacetime-gaussians-at-300-frames-one-model-decided-2026-10-13) below. A study on 50 frames only was considered the same day and rejected, because it gives up the comparison with the papers for all three methods.
 
 ### What the window is
 
@@ -73,30 +76,84 @@ The LPIPS figures are not all the same quantity: see decision 9.
 **What 300 frames costs.**
 
 * **4DGaussians and 4DGS native-4D**: the same number of steps as at 50 frames, since each builds one model for the window. What grows is the data: six times the frames to extract and to load, and each evaluation renders 300 test views instead of 50.
-* **Spacetime Gaussians**: six times the training (six independent 50-frame models per scene, as in its paper) and 300 per-frame COLMAP reconstructions per scene instead of 50. It is the method that dominates the budget; see decision 3.
+* **Spacetime Gaussians**: 300 per-frame COLMAP reconstructions per scene instead of 50, and, run as in its paper, six times the training (six independent 50-frame models per scene). That made it the method that dominated the budget, which is why it is now run as one model (below).
 * **Disk**: estimated 13–18 GB of extracted frames per scene (2–3 MB per PNG, about 20 cameras, 300 frames), against 2–3 GB at 50 frames. An estimate; the runs record the real figure (`scene_data_mb`).
 
 ### What the 50-frame study is for
 
 It is kept as the secondary study, with the same three methods, for two reasons:
 
-* **Protocol B runs there.** At 300 frames Protocol B is not defined for Spacetime Gaussians, which is six separate models (decision 7).
+* **Protocol B ran there.** With six separate Spacetime Gaussians models Protocol B was not defined at 300 frames (decision 7). With one model it is, so this reason has gone (sub-point 2b).
 * **It is cheap**, and it is the first thing a smoke test exercises.
 
 Its limits: no published number is comparable with it, and the first 1.67 seconds of a scene may not be representative of the whole (the flame of `flame_salmon_1`, for instance). Decision 8 is a proposal that addresses the second point.
 
-### Spacetime Gaussians at 300 frames
+### Spacetime Gaussians at 300 frames: one model (decided 2026-10-13)
 
-Six independent models of 50 frames, one per block, which is how the paper covers a 300-frame sequence (each model is trained on a 50-frame sequence and the models are arranged in series). The merged result is defined as:
+**What was decided.** One `ours_full` model per scene, trained on the whole 300-frame window (`--duration 300`), instead of the six independent 50-frame models of the paper, in two variants.
 
-* **quality** (PSNR, SSIM, LPIPS, L1): the mean over the 300 test images;
-* **training time, steps, images seen, storage**: summed over the six;
-* **peak VRAM**: the maximum of the six.
+**Why.** The smoke test of 2026-10-09 put Protocol A at about 100 hours of an L4 for the six scenes (a lower bound), 73 of them for Spacetime Gaussians: 36 models per variant. That is more than the GPU time available, before any Protocol B.
+
+| Plan for the 300-frame window | 4DGaussians + 4DGS native-4D | Spacetime Gaussians | Total, L4 hours |
+|---|---|---|---|
+| Six blocks, `ours_lite` and `ours_full` (the plan until now) | 27 | 73 | 100 |
+| Six blocks, `ours_full` only | 27 | 40 | 67 |
+| **One model, `ours_full` (decided)** | 27 | 12 | 39 |
+
+All are extrapolations from short runs on one scene, lower bounds, and exclude the preparation of the data. The 12 hours assume 30 000 steps at the 0.12 s per step measured on a 50-frame model, made 1.3 times slower (the ratio that the paper's own timings give between its 300-frame and its 50-frame models: 3.7 s per frame for 10 000 steps against 20 s per frame for six runs of 12 000), plus the evaluation of 300 views at every sample, which is the same in the two layouts.
+
+**It is a configuration the method supports, not the one its results come from.**
+
+* The paper says so: "Our method also supports using a single model to represent more frames" (supplementary, *Longer Video Sequence*), and tries it on one scene. On `flame_salmon`, one 300-frame model at 10 000 steps gives 29.17 dB PSNR, 0.068 LPIPS and 216 MB, against 29.48 dB, 0.063 and 300 MB for six 50-frame models at 12 000 steps each. The table does not name the variant; its 50-frame row is the `ours_full` row of the per-scene tables (the `ours_lite` one is 28.67 dB), so both rows are the full model, with AlexNet LPIPS.
+* In the code nothing ties the method to 50 frames: `--duration` is a command-line value, the reader normalises time to the window, and the point cloud and the held-out camera follow it. **No upstream code is changed.**
+* The released hyper-parameters are tuned for 50 frames. The author: "hyperparameter is for 50 frames duration" (issue [#56](https://github.com/oppo-us-research/SpacetimeGaussians/issues/56)); "we didn't optimize the training pipeline for 300 frames", with the advice that six 50-frame sequences should give the best result (issue [#66](https://github.com/oppo-us-research/SpacetimeGaussians/issues/66)). Users report blurred moving parts at 300 frames with the default configs (issues [#84](https://github.com/oppo-us-research/SpacetimeGaussians/issues/84) on N3DV and [#74](https://github.com/oppo-us-research/SpacetimeGaussians/issues/74) on another dataset), without numbers. The author's explanation in #84: points of the first and of the last frames overlap in space and their opacity is averaged.
+* No configuration for 300 frames is released, and the upstream repository has no branch or pull request about it. Two forks set `duration: 300` on N3DV (`raikuma`, `riotofbug`); neither publishes a result, and both rewrote the image loading to fit in memory.
+
+**What is given up, and what is gained.**
+
+* **The comparison with the paper's headline numbers** (32.05 dB full, 31.59 dB lite) does not apply to this row: those come from six models. One published figure remains, 29.17 dB on `flame_salmon`. For 4DGaussians and 4DGS native-4D nothing changes: 300 frames is their official setting.
+* **The `ours_lite` row** (decision 3).
+* **Gained: Protocol B on the main window** (decision 7), and a like-for-like comparison: one model per method, where the six-block layout summed the cost of six.
+
+**The budget.** No official budget exists for this configuration. The run keeps the method's 30 000 steps and is read twice: at the end, and at 10 000 steps, the step count of the paper's 300-frame model, which is on the sampling grid (`paper_long_model_iteration` in the JSON). The per-scene `test_iteration` of the official configs is still recorded, but it was chosen for 50-frame models.
+
+**Memory.** Upstream loads every training image onto the GPU as float32: 16 MB each at 1352×1014, about 17 GB for 50 frames (21.1 GB of VRAM were measured), about 100 GB for 300.
+
+* **Chosen: the two options upstream provides for this** (README, 9 June 2024; issues #2, #52, #62): `--data_device cpu --gtisint8 1`. The images stay in host memory as 8-bit integers, about 24 GB for 300 frames of 19 training cameras. It is lossless for 8-bit frames (the round trip through float32 was checked on all 256 values), and the same images reach the loss in the same order. The notebook also raises the limit of open files for the training process, as the author indicates (issue #31).
+* **Found in the pilot run: upstream keeps a second, decoded copy of every frame.** The reader opens each frame as a PIL image; building the training tensor decodes it, and the decoded copy stays alive until the scene is built. At 300 frames that is about 31 GB more, and the first attempt was killed at 57 GB on a 62 GB machine. The notebook's monitor code (not upstream's files) closes each decoded copy as soon as its tensor exists, for long models only; the tensors, and so the training data, are unchanged. With it the images take 24.5 GB. Recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §6.
+* **Fallback, only if the first cannot be made to work at all**: read the frames from disk at every step. That is a change to upstream's image loading, the second change to upstream code in the study, and would be recorded in [DISCLOSURES_MULTIVIEW.md](DISCLOSURES_MULTIVIEW.md) §6. Not implemented.
+* **What it changes in the measurements, in either case:** the method's peak VRAM no longer includes the training images, so it is not comparable with the 21.1 GB of the smoke test (the other two methods already keep their images off the GPU); and its training time includes moving two images to the GPU at every step.
+
+**Condition: a pilot run.** Before the six scenes, one run of `ours_full` on `flame_salmon_1`, the only scene with a published single-model figure, read at 10 000 and at 30 000 steps. If it is far from 29.17 dB, shows the blur the issues describe, or cannot be made to fit in memory, the fallback is the paper's layout for `ours_full` alone (six blocks, 67 hours in the table above), which leaves decision 7 open again.
+
+**The pilot run (2026-10-13), accepted on 2026-10-14.** One L4, upstream's hyper-parameters, 30 000 steps, 300 test views:
+
+| | Pilot | Paper, one 300-frame model (10K steps) | Paper, six 50-frame models |
+|---|---|---|---|
+| PSNR at 10 000 steps | 28.82 dB | 29.17 dB | — |
+| PSNR at 30 000 steps | 28.65 dB (best 28.87, at 24 000) | — | 29.48 dB |
+| LPIPS (AlexNet), end of run | 0.070 | 0.068 | 0.063 |
+| Model size | 75 MB | 216 MB | 300 MB |
+| Training time | 97 min (31.6 min to 10 000 steps) | — | — |
+| Peak VRAM | 5.2 GB | — | — |
+
+* Upstream's own `test.py`, run on the final model, gives the same PSNR, SSIM and LPIPS as the monitor (28.6467 dB), so the gap is not in the way this project measures.
+* The curve is flat after densification ends (28.5–28.9 dB from 9 000 steps on), and quality is even over the sequence: the mean PSNR of each 50-frame stretch is between 28.58 and 28.71 dB.
+* Blur: on the rendered held-out view the person, the pan and the fish are sharp; the fast-moving torch and hand are slightly blurred, and the outdoor background seen through the windows is softer than in the ground truth.
+* The gap of 0.35 dB at 10 000 steps has not been attributed. The per-frame COLMAP runs on frames already halved, where upstream runs it at full resolution (METHODOLOGY_MULTIVIEW §5.3); the paper does not give the hyper-parameters of its own 300-frame model.
+
+**Accepted** by the study owner on 2026-10-14: the results are comparable with the paper's and the blur is limited, so the six scenes are run this way.
+
+**Sub-point (2a): the hyper-parameters of the long model. Decided 2026-10-14: upstream's, unchanged**, to stay consistent with the repository's code; no tuning by this project. That was the default: which is what the two forks did and the most likely reading of the paper's experiment. The alternative is the author's advice for 300 frames in issue #66: a narrower initial temporal extent (`trbfslinit` 4, against 0) and the initial points of one frame in two or four (`preprocesspoints` 14 or 15). The reason behind it: time is normalised to the window, so the default initial extent of a Gaussian spans 50 frames in a 50-frame model and all 300 in a long one. No result is published for either choice. The pilot, with upstream's values, was accepted, so the alternative is not tried.
+
+**Open sub-point (2b): the 50-frame study.** It existed for Protocol B, which no longer needs it. Default: not run. It remains available (`--set NUM_FRAMES=50`), at about 32 L4 hours for the three methods.
+
+**The six-block layout** stays in the code and is what `STG_BLOCK_FRAMES = 50` (the default) does: quality is the mean over the 300 test images, training time, steps, images seen and storage are summed over the six models, peak VRAM is their maximum.
 
 ### How it is implemented
 
 * Notebooks 05 and 06 take the window from `NUM_FRAMES`; runs go to `<scene>_f300_…` or `<scene>_f50_…` folders.
-* Notebook 07 trains in blocks whenever `NUM_FRAMES` is above 50, keeps each block's JSON under `<run>/blocks/block_<k>/` and merges them into one benchmark JSON. An interrupted scene resumes at the first unfinished block.
+* Notebook 07 takes the length of one model from `STG_BLOCK_FRAMES`. With `--set STG_BLOCK_FRAMES=300` the window is one model: an ordinary run with `--duration 300`, in a folder tagged `_block300`, with `stg_long_model`, `stg_memory_args` and `paper_long_model_iteration` in its JSON. With the default of 50 it trains in blocks whenever `NUM_FRAMES` is above 50, keeps each block's JSON under `<run>/blocks/block_<k>/` and merges them into one benchmark JSON; an interrupted scene resumes at the first unfinished block.
 * The analysis keeps the two windows apart: `GS_STUDY=n3dv` reads the 300-frame runs and writes `results/n3dv/analysis/`; `GS_STUDY=n3dv_f50` reads the 50-frame runs and writes `results/n3dv/analysis_f50/`.
 
 ---
@@ -105,7 +162,9 @@ Six independent models of 50 frames, one per block, which is how the paper cover
 
 **Where:** cell 0.1 of notebook 07, the variable `STG_MODEL`.
 
-**Decided 2026-10-02: both released variants are benchmarked, as two rows of the results. If running both costs too much, only `ours_lite` is run.** What "too much" means is open and waits for the smoke test.
+**Decided 2026-10-13: only `ours_full` is run, as one model per scene (decision 2).** It is the method as its authors present it, and the variant of the only published single-model figure. What is lost is the row that was comparable with the other two methods, neither of which has a neural colour decoder: the reader can no longer see how much of the result is the decoder. The sub-point 3a (the threshold for falling back on `ours_lite`) lapses.
+
+*The rest of this section is the choice of 2026-10-02, kept for its reasoning.* **Then decided: both released variants are benchmarked, as two rows of the results. If running both costs too much, only `ours_lite` is run.**
 
 ### The two released models
 
@@ -268,7 +327,7 @@ Each sample evaluates the whole test split, 300 views in the main study. That ti
 
 **Where:** notebook 07, which refuses a Protocol B run in blocks; the Protocol B targets in cell 0.1 of the three notebooks.
 
-**Open. To be taken after the Protocol A runs, when the curves show how much it matters.**
+**Settled on 2026-10-13 by decision 2.** Spacetime Gaussians is one model on the 300-frame window, so "the first time the target is reached" is defined for it as for the other two, and Protocol B runs on the main window with no special rule. The targets are calibrated, as always, on the Protocol A curves of the configurations actually run — for Spacetime Gaussians, the single model. If the pilot run of decision 2 fails and the method goes back to six blocks, this decision is open again, and what follows is the analysis to start from.
 
 ### The problem
 
@@ -305,7 +364,7 @@ The Protocol A curves already contain "the first sample at which the target is m
 
 **Where:** nowhere yet. It would be a new knob in cell 0.1 of the three notebooks.
 
-**Open. Proposed on 2026-10-02 by the project's collaborators; left open for now, with no date.**
+**Decided 2026-10-13: not run** (option A below). The frames of the study are consecutive, at the native 30 fps. Proposed on 2026-10-02 by the project's collaborators.
 
 ### The idea
 
@@ -339,7 +398,27 @@ A possible extension, not costed: the frames that were skipped are available as 
 * **B — add it as a third study**, next to the 300-frame and the contiguous 50-frame ones.
 * **C — let it replace the contiguous 50-frame study.** Protocol B would then run on a window that is representative of the whole scene, at the same cost.
 
-**Current default:** A. If the experiment is run, C is the option that adds no GPU time.
+**Decided:** A.
+
+---
+
+## 10. How many views Protocol B evaluates
+
+**Where:** `MAX_EVAL_VIEWS` and `EVAL_EVERY_N_MINUTES` (0.5 for Protocol B), in cell 0.1 of the three notebooks.
+
+**Open (2026-10-14).** To be discussed with the project's collaborators before the Protocol B runs.
+
+### The problem
+
+Protocol B stops a run the first time the evaluation L1 meets the target, checked every 30 s of training ([METHODOLOGY_MULTIVIEW.md](METHODOLOGY_MULTIVIEW.md) §7). In the monocular study an evaluation was cheap. Here one evaluation renders and scores 300 views, and the pilot measured 60–70 s for it on an L4: every 30 s of training would cost about a minute of evaluation, so a Protocol B run would take about three times its training time. Over the three methods and six scenes that is an estimated 80 credits of GPU time, about what Protocol A costs.
+
+### Options
+
+* **A — all 300 views at every check** (implemented). The stopping rule is the one of Protocol A's curves. Cost: about 80 credits (estimate).
+* **B — the stopping rule on a fixed subset, for example 50 views (one in six, spread over the whole sequence), and the full 300 views on the reported entry.** The check costs about 12 s; the estimate drops to about 35 credits. The subset would decide only *when* to stop, and the number reported would still be the mean over the 300 views. That needs code: today `MAX_EVAL_VIEWS` applies to every evaluation, so a full evaluation of the stopping point would have to be added. A run may stop a check earlier or later than it would on all views.
+* **C — all 300 views, checked less often** (for example every 120 s). Same metric, coarser stopping time: the first crossing is known within 120 s of training instead of 30 s. Only a knob (`--set EVAL_EVERY_N_MINUTES=2`).
+
+**Current default:** A. **Recommendation:** B, which keeps the reported numbers identical in definition and fits the budget; the subset and its effect on the stopping step should be declared next to the results.
 
 ---
 
@@ -443,9 +522,10 @@ The title of the paper is *"Tracking by Persistent Dynamic View Synthesis"*: its
 
 ## How the decisions interact
 
-* **The order in which the open ones are taken**: the GPU (4) from the smoke test; the fallback threshold (3a) after one scene with `ours_full`; Protocol B at 300 frames (7) after the Protocol A runs; the subsampled window (8) has no date.
-* **3 and 4 are tied by the budget.** Spacetime Gaussians at 300 frames is 36 models per variant; whether both variants are affordable is what the smoke test on the chosen GPU has to say.
-* **2 and 7.** Making 300 frames the main window leaves the main study without Protocol B until decision 7 is taken.
+* **The order in which the open ones are taken**: the GPU (4) before the six scenes (the smoke test and the pilot ran on an L4); how many views Protocol B evaluates (10) before the Protocol B runs; the 50-frame study (2b) when the budget left after the main study is known.
+* **2, 3 and 7 hung on the pilot run**, which was accepted on 2026-10-14: one `ours_full` model on 300 frames is what makes the study affordable and gives the main window its Protocol B.
+* **7 and 10.** Protocol B on 300 frames is defined; what it costs depends on decision 10.
+* **2 and 4.** The long model needs about 26 GB of host memory for its images; the machine chosen has to have it.
 * **2 and 8.** The subsampled window (8) is a candidate replacement for the contiguous 50-frame study, not for the main one.
 * **6 and 7.** With official budgets, the Protocol B targets are "the worst of the methods' bests as their authors run them"; the calibration needs no change.
 
