@@ -14,6 +14,22 @@ Each method is trained with its **official training code**. The only modificatio
 
 > **AI disclosure.** This repository and part of the code used to extract the metrics (the benchmark monitor injected into each training loop, the per-scene preparation code, the analysis pipeline in `results/analysis/scripts/`) were generated with AI assistance (Anthropic's Claude), starting from the code of the official repository of each method. The training code of each method is the official one, cloned at run time and modified only as described above, and every number reported here comes from real training runs whose raw logs are included in `results/`. The documentation, also AI-assisted, was checked against the raw data and the original papers.
 
+## Visual results: bouncingballs
+
+The same D-NeRF scene, *bouncingballs*, reconstructed by each method from a single moving camera. Every preview below loops a short GIF; click it to open the full-resolution MP4.
+
+| | **Deformable-3DGS** | **4DGaussians / HexPlane** | **4DGS, native 4D primitives** |
+|---|:---:|:---:|:---:|
+| **Fixed camera**<br><sub>time runs from t = 0 to t = 1 seen from one viewpoint</sub> | [![Deformable-3DGS, fixed camera](media/bouncingballs/deformable-3dgs/fixed_camera.gif)](media/bouncingballs/deformable-3dgs/fixed_camera.mp4) | <sub>not exported</sub> | [![4DGS native-4D, fixed camera](media/bouncingballs/4dgs-native4d/fixed_camera.gif)](media/bouncingballs/4dgs-native4d/fixed_camera.mp4) |
+| **Moving camera**<br><sub>time and viewpoint change together along a camera path</sub> | [![Deformable-3DGS, moving camera](media/bouncingballs/deformable-3dgs/moving_camera.gif)](media/bouncingballs/deformable-3dgs/moving_camera.mp4) | [![4DGaussians, moving camera](media/bouncingballs/4dgaussians/moving_camera.gif)](media/bouncingballs/4dgaussians/moving_camera.mp4) | [![4DGS native-4D, moving camera](media/bouncingballs/4dgs-native4d/moving_camera.gif)](media/bouncingballs/4dgs-native4d/moving_camera.mp4) |
+| **Real-time viewer**<br><sub>8 s excerpt of a screen recording of the interactive WebSocket viewer (orbit, zoom, time slider); the link opens the full ~28 s recording</sub> | [![Deformable-3DGS, real-time viewer](media/bouncingballs/deformable-3dgs/realtime_viewer.gif)](media/bouncingballs/deformable-3dgs/realtime_viewer.mp4) | [![4DGaussians, real-time viewer](media/bouncingballs/4dgaussians/realtime_viewer.gif)](media/bouncingballs/4dgaussians/realtime_viewer.mp4) | [![4DGS native-4D, real-time viewer](media/bouncingballs/4dgs-native4d/realtime_viewer.gif)](media/bouncingballs/4dgs-native4d/realtime_viewer.mp4) |
+
+* **Deformable-3DGS**: the sharpest balls and the cleanest plate and shadows, in line with its best PSNR/SSIM/LPIPS in the tables below.
+* **4DGaussians**: faithful motion and colours, with softer ball edges and blurrier shadows.
+* **4DGS native-4D**: correct dynamics, but the most visible artefacts (lumpy ball surfaces, coloured floaters under the plate), consistent with its lower test quality.
+
+These clips are qualitative: they were produced with Part 2 of each notebook (rendering, video export, real-time viewer), on the background colour chosen at render time, so some use white rather than the black background used for the metrics.
+
 ## Two protocols
 
 * **Protocol A, equal iterations.** Every method trains for 30 000 optimisation steps (for 4DGaussians: 3 000 coarse + 27 000 fine), metrics sampled every 1 000 steps. *At equal budget, which method reconstructs best?*
@@ -60,6 +76,7 @@ Full discussion: [docs/RESULTS.md](docs/RESULTS.md).
 ```
 .
 ├── notebooks/                      one self-contained Colab notebook per method
+├── media/bouncingballs/            rendered videos (MP4) and GIF previews, one folder per method
 ├── docs/
 │   ├── METHODOLOGY.md              instrumentation, aligned conventions, protocols, limitations
 │   ├── PROTOCOL_B_CALIBRATION.md   derivation of the per-scene L1 targets
