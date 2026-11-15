@@ -28,7 +28,7 @@ The same D-NeRF scene, *bouncingballs*, reconstructed by each method from a sing
 * **4DGaussians**: faithful motion and colours, with softer ball edges and blurrier shadows.
 * **4DGS native-4D**: correct dynamics, but the most visible artefacts (lumpy ball surfaces, coloured floaters under the plate), consistent with its lower test quality.
 
-These clips are qualitative: they were produced with Part 2 of each notebook (rendering, video export, real-time viewer), on the background colour chosen at render time, so some use white rather than the black background used for the metrics.
+These clips are qualitative: they were produced with Part 2 of each notebook (rendering, video export, real-time viewer), on the background colour chosen at render time, so some use white rather than the black background used for the metrics. The native-4D fixed- and moving-camera clips were exported at 400×400, half the resolution of the others, which also makes them look softer.
 
 ## Two protocols
 
